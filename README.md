@@ -103,3 +103,37 @@ Jika terjadi konflik IP dengan jaringan lokal (misalnya dengan DHCP server route
 Untuk bantuan lebih lanjut:
 - Cek log service: `journalctl -u xl2tpd`
 - Status koneksi: Menu opsi 2
+
+## Configurable L2TP IPv4 network (fork extension)
+
+Network values are configurable without editing the installer source.
+Machine-specific values must not be committed to this public repository.
+On a fresh host, create a root-owned plain text config file at
+/etc/l2tp-manager/network.conf (mode 0600; one key=value per line).
+
+Keys: VPN_SUBNET, VPN_IP_START, VPN_IP_END, VPN_LOCAL_IP, VPN_MTU,
+VPN_MRU, VPN_DNS1, VPN_DNS2, L2TP_PORT.
+Default pool remains 172.16.101.10-172.16.101.100 in
+172.16.101.0/24. Default PPP MTU/MRU are both 1280.
+The installer and IPv4 address allocator validate the configured pool.
+
+IMPORTANT: Modifying the repository or changing the network config does
+not migrate live PPP sessions, IP reservations, NAT, routes, firewall
+snapshots, or router configurations. Do NOT rerun setup on a live shared
+host merely to change an IPv4 pool: plan the migration separately.
+IPv6 internet access does not require changing the IPv4 pool.
+
+## Optional IPv6 over GRE (fork extension)
+
+IPv6CP negotiates link-local addresses, not usable Internet IPv6
+prefixes. The optional helper generates ULA addresses and uses
+host-local JSON settings for client-scoped IPv6 routes and NAT66.
+No user/server-specific address or interface is built into the code.
+
+Read [IPv6 over GRE deployment](docs/ipv6-gre.md) and fill in the
+per-host JSON templates under examples/. This feature does not alter
+server settings unless an administrator explicitly deploys and runs
+it, and does not configure MikroTik automatically.
+
+SECURITY: L2TP without IPsec, GRE and NAT66 do not encrypt traffic.
+Use a separate secure transport for confidential communications.
