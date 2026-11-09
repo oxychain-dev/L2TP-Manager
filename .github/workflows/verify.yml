@@ -1,0 +1,20 @@
+name: Verify source
+on:
+  push:
+  pull_request:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          bash -n l2tp-manager.sh lib/*.sh config/defaults.conf
+          bash -n tests/network.sh
+      - name: Python syntax and ULA generator
+        run: |
+          python3 -m py_compile tools/ipv6-gre.py
+          python3 tools/ipv6-gre.py generate-ula
+      - name: Network config allocator regression
+        run: bash tests/network.sh
