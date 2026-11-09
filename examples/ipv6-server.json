@@ -1,0 +1,10 @@
+{
+  "role": "server",
+  "client_ipv4": "",
+  "client_ipv6": "",
+  "lan_prefix": "",
+  "gre_interface": "",
+  "gre_peer_ipv6": "",
+  "routing_table": 0,
+  "rule_priority": 0
+}
