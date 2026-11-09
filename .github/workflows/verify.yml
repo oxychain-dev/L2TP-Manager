@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Shell syntax
         run: |
-          bash -n l2tp-manager.sh lib/*.sh config/defaults.conf
+          for f in l2tp-manager.sh lib/*.sh config/defaults.conf; do bash -n "$f"; done
           bash -n tests/network.sh
       - name: Python syntax and ULA generator
         run: |
