@@ -193,7 +193,7 @@ add_user_manual() {
     echo -e "${CYAN}===============================================${NC}"
     echo -e "${YELLOW}📋 Connection Details:${NC}"
     echo -e "${CYAN}Server IP:   ${NC}$PUBLIC_IP"
-    echo -e "${CYAN}L2TP Port:   ${NC}1701"
+    echo -e "${CYAN}L2TP Port:   ${NC}$L2TP_PORT"
     echo -e "${CYAN}Username:    ${NC}$username"
     echo -e "${CYAN}Password:    ${NC}$password"
     echo -e "${CYAN}Static IP:   ${NC}$ip_addr"
