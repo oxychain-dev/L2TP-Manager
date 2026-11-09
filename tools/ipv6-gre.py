@@ -207,7 +207,7 @@ def gateway_apply(cfg, dry_run):
                        "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"], True, dry_run)
         nat = ["-t", "nat", "POSTROUTING", "-s", prefix, "-o",
                cfg["wan_interface"], "-j", "SNAT", "--to-source", cfg["wan_ipv6"]]
-        if subprocess.run(["ip6tables", "-w", "5", "-t", "nat", "-C"] + nat[3:],
+        if subprocess.run(["ip6tables", "-w", "5", "-t", "nat", "-C", "POSTROUTING"] + nat[3:],
                           capture_output=True).returncode:
             call(["ip6tables", "-w", "5", "-t", "nat", "-I", "POSTROUTING", "1"]
                  + nat[3:], dry_run)
