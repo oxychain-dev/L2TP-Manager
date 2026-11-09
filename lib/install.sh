@@ -119,9 +119,9 @@ fix_xl2tpd_config() {
     fi
 
     # Ensure port 1701 is not in use by another process
-    if is_port_listening "1701" "udp" || is_port_listening "1701" "tcp"; then
+    if is_port_listening "$L2TP_PORT" "udp" || is_port_listening "$L2TP_PORT" "tcp"; then
         local blocking_pid
-        blocking_pid=$(ss -tulnp 2>/dev/null | grep ":1701 " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n1)
+        blocking_pid=$(ss -tulnp 2>/dev/null | grep ":$L2TP_PORT " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n1)
         if [[ -n "$blocking_pid" ]]; then
             warning "Port 1701 is blocked by PID $blocking_pid, attempting to kill..."
             kill -9 "$blocking_pid" 2>/dev/null
