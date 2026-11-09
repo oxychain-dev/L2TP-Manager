@@ -383,38 +383,83 @@ ip_already_assigned() {
     grep -q "\s${ip}$" "$CHAP_SECRETS" 2>/dev/null
 }
 
-# Get next available IP address
+# Convert an IPv4 address to a 32-bit integer without external dependencies.
+vpn_ipv4_to_int() {
+    local -a octets
+    local octet
+    [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+    IFS=. read -r -a octets <<< "$1"
+    [[ ${#octets[@]} -eq 4 ]] || return 1
+    for octet in "${octets[@]}"; do
+        [[ "$octet" =~ ^(0|[1-9][0-9]{0,2})$ ]] || return 1
+        (( 10#$octet <= 255 )) || return 1
+    done
+    printf '%u\n' "$(( (10#${octets[0]} << 24) | (10#${octets[1]} << 16) | (10#${octets[2]} << 8) | 10#${octets[3]} ))"
+}
+
+vpn_int_to_ipv4() {
+    local n="$1"
+    printf '%d.%d.%d.%d\n' "$(( (n >> 24) & 255 ))" "$(( (n >> 16) & 255 ))" "$(( (n >> 8) & 255 ))" "$(( n & 255 ))"
+}
+
+# Fail before modifying services or firewall if the pool is ambiguous.
+validate_vpn_network_settings() {
+    local base prefix ipnet ipstart ipend iplocal mask broadcast
+    if [[ ! "$VPN_SUBNET" =~ ^([0-9.]+)/([0-9]{1,2})$ ]]; then
+        error "VPN_SUBNET must be a canonical IPv4 CIDR"
+        return 1
+    fi
+    base=${BASH_REMATCH[1]}
+    prefix=${BASH_REMATCH[2]}
+    if (( 10#$prefix < 8 || 10#$prefix > 30 )); then
+        error "VPN_SUBNET must have prefix length /8 through /30"
+        return 1
+    fi
+    prefix=$((10#$prefix))
+    ipnet=$(vpn_ipv4_to_int "$base") || { error "Invalid VPN_SUBNET address"; return 1; }
+    ipstart=$(vpn_ipv4_to_int "$VPN_IP_START") || { error "Invalid VPN_IP_START"; return 1; }
+    ipend=$(vpn_ipv4_to_int "$VPN_IP_END") || { error "Invalid VPN_IP_END"; return 1; }
+    iplocal=$(vpn_ipv4_to_int "$VPN_LOCAL_IP") || { error "Invalid VPN_LOCAL_IP"; return 1; }
+    mask=$(( (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF ))
+    broadcast=$(( ipnet | (0xFFFFFFFF ^ mask) ))
+    if (( (ipnet & mask) != ipnet || ipstart <= ipnet || ipend >= broadcast ||
+          iplocal <= ipnet || iplocal >= broadcast || ipstart > ipend ||
+          (ipstart & mask) != ipnet || (ipend & mask) != ipnet ||
+          (iplocal & mask) != ipnet || (ipend - ipstart + 1) > 4096 ||
+          (iplocal >= ipstart && iplocal <= ipend) )); then
+        error "VPN subnet, pool and local address conflict or are out of range"
+        return 1
+    fi
+    vpn_ipv4_to_int "$VPN_DNS1" >/dev/null || { error "Invalid VPN_DNS1"; return 1; }
+    vpn_ipv4_to_int "$VPN_DNS2" >/dev/null || { error "Invalid VPN_DNS2"; return 1; }
+    if [[ ! "$VPN_MTU" =~ ^[0-9]{4}$ || ! "$VPN_MRU" =~ ^[0-9]{4}$ ]] ||
+       (( VPN_MTU < 1280 || VPN_MTU > 1500 || VPN_MRU < 1280 || VPN_MRU > 1500 )); then
+        error "VPN_MTU and VPN_MRU must be 1280..1500"
+        return 1
+    fi
+    if [[ ! "$L2TP_PORT" =~ ^[0-9]{1,5}$ ]] ||
+       (( 10#$L2TP_PORT < 1 || 10#$L2TP_PORT > 65535 )); then
+        error "Invalid L2TP_PORT"
+        return 1
+    fi
+}
+
+# Allocate from the configured pool; no assumptions about a specific /24.
 get_next_available_ip() {
-    local base_ip="172.16.101"
-    local start_range=10
-    local end_range=100
-
-    # Get all currently assigned IPs
-    local assigned_ips=()
-    while IFS= read -r line; do
-        is_comment_or_empty "$line" && continue
-        local ip=$(echo "$line" | awk '{print $4}')
-        [[ -n "$ip" ]] && assigned_ips+=("$ip")
-    done < "$CHAP_SECRETS"
-
-    # Find first available IP
-    for i in $(seq $start_range $end_range); do
-        local test_ip="${base_ip}.${i}"
-        local is_assigned=0
-
-        for assigned_ip in "${assigned_ips[@]}"; do
-            if [[ "$assigned_ip" == "$test_ip" ]]; then
-                is_assigned=1
-                break
-            fi
-        done
-
-        if [[ $is_assigned -eq 0 ]]; then
-            echo "$test_ip"
+    validate_vpn_network_settings || return 1
+    local start end n candidate
+    start=$(vpn_ipv4_to_int "$VPN_IP_START") || return 1
+    end=$(vpn_ipv4_to_int "$VPN_IP_END") || return 1
+    for ((n=start; n<=end; n++)); do
+        candidate=$(vpn_int_to_ipv4 "$n")
+        if ! awk -v target="$candidate" '
+            $1 !~ /^#/ && $4 == target { found=1; exit }
+            END { exit found ? 0 : 1 }
+        ' "$CHAP_SECRETS"; then
+            printf '%s\n' "$candidate"
             return 0
         fi
     done
-
     return 1
 }
 
