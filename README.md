@@ -204,3 +204,35 @@ The pilot is still nonpersistent and not generalized to multiple users.
 The selective GRE user's IPv4 remote egress needs a fresh client-side
 test; the iPhone IKEv2 responder and user provisioning are not deployed.
 No GitHub commit or CI check implies production deployment.
+
+
+### Scoped persistence and global shared IPsec key (development)
+
+The repository now includes:
+- `tools/direct6-reconcile.py` with an **independent PPP-aware per-client
+  direct IPv6** reconciler. It does not use fixed ppp0/ppp1 names.
+- `tools/install-direct6-persistence.sh` with a per-client-scoped
+  systemd timer and PPP up/down callbacks, and
+  `tools/adopt-direct6-pilot.py` for guarded removal of the old pilot.
+- `tools/global-psk.py` which securely creates ONE root-owned global
+  strongSwan legacy L2TP/IPsec PSK include file, without ever
+  printing or committing the key.
+- `tools/ikev2-dualstack.py` which validates input, manages a private
+  iPhone EAP registry and renders an **inactive** dual-IPv4/IPv6
+  strongSwan configuration candidate.
+- Deliberately incomplete example JSON under `examples/`.
+
+**Deployment is not automatic.** See
+[Staged stable-deployment gates](docs/STABLE-DEPLOYMENT-GATES.md).
+The existing live PPP/IPv6 pilot proved one ordinary client's direct
+IPv6 path, but the new reconciler has NOT been field-tested or reboot
+tested. StrongSwan remains uninstalled on the historically inspected
+Polaris host; a PSK file or account metadata is not IPsec enforcement.
+
+**IPsec choice:** Apple supports L2TP/IPsec with a shared machine PSK
+and individual user credentials. On a shared unprotected L2TP/1701
+listener, it is not safe to claim a subset of usernames is forced to
+use IPsec. Use an independently authenticated, IPsec-only endpoint
+and test plaintext denial before enabling protected accounts.
+For iPhone IKEv2 individual users, the EAP/certificate design is
+different from an L2TP global PSK.
