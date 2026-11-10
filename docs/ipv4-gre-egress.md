@@ -80,3 +80,37 @@ Never install this helper through the L2TP ingress service or the IPv6
 timer. Persistence is a separate, deliberately operator-reviewed step.
 
 These scripts and docs **do not change any live host automatically**.
+
+
+### Optional persistence after successful traffic test
+
+After applying and verifying NAT44 + client return routing, a small installer
+can pin the tested helper to a root-owned executable and install one independent
+systemd oneshot and a bounded 60-second retry timer:
+
+~~~sh
+sudo bash tools/install-ipv4-egress-persistence.sh \
+  tools/ipv4-gre-egress.py /etc/l2tp-manager/ipv4-egress.json
+~~~
+
+This intentionally refuses to overwrite an existing installation and runs a
+read-only helper dry-run before creating units. The original chosen JSON file
+must continue to exist. Inspect its parent directory permissions as well.
+The installer takes a root-only backup of current rules and routes but does
+not save/restore the whole firewall. On install error, audit which files/units
+were created before retrying; the installer is intentionally not a blanket
+cleanup routine.
+
+Validation:
+
+~~~sh
+systemctl is-enabled l2tp-ipv4-gre-egress.timer
+systemctl is-active l2tp-ipv4-gre-egress.timer
+systemctl show l2tp-ipv4-gre-egress.service -p Result -p ExecMainStatus
+sudo journalctl -u l2tp-ipv4-gre-egress.service -n 30 --no-pager
+~~~
+
+After the selected client reconnects, re-check its real outward IPv4 egress.
+Then perform a **separately authorized** controlled reboot/reconnect test.
+Disable the timer first before intentionally removing the owned IPv4 route,
+NAT, and forwarding rules. Never flush unrelated tables.
