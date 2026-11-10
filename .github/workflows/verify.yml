@@ -14,7 +14,9 @@ jobs:
           bash -n tests/network.sh
       - name: Python syntax and ULA generator
         run: |
-          python3 -m py_compile tools/ipv6-gre.py
+          python3 -m py_compile tools/ipv6-gre.py tools/ipv4-gre-egress.py tools/ipsec-policy.py
           python3 tools/ipv6-gre.py generate-ula
+      - name: IPv4 egress and IPsec policy safety unit tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Network config allocator regression
         run: bash tests/network.sh
