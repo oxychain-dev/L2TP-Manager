@@ -137,3 +137,28 @@ it, and does not configure MikroTik automatically.
 
 SECURITY: L2TP without IPsec, GRE and NAT66 do not encrypt traffic.
 Use a separate secure transport for confidential communications.
+
+
+## Selected-client IPv4 GRE egress and optional IPsec policy
+
+**IPv4 and IPv6 are independent.** A PPP client can reach the L2TP server and
+even have successful IPv6 through GRE while still lacking IPv4 Internet through
+the remote GRE gateway. Inspect the IPv4 GRE gateway's return route, NAT44,
+forwarding and source-policy choice before changing the client's IPv4 pool.
+
+The optional, client-scoped IPv4 egress tool, examples, guarded persistence
+installer, and read-only/troubleshooting steps are in
+[docs/ipv4-gre-egress.md](docs/ipv4-gre-egress.md).
+It is not installed or enabled automatically.
+
+For optional IPsec requirements, a global host-local policy file can record
+per-user intent (`plaintext` vs `ipsec-required`), validated by
+`tools/ipsec-policy.py`. **This is only a policy registry, not enforcement.**
+Real selective IPsec needs a separate IPsec-only L2TP listener/endpoint,
+working kernel IPsec/XFRM policy, a firewall that refuses plaintext
+connections on that endpoint, and segregated user credentials. Until that
+integration is implemented and tested, **do not claim user-specific IPsec
+has been enabled**. See [docs/ipsec-selective.md](docs/ipsec-selective.md).
+
+Security: the users-list command now masks stored passwords, but further
+credential-handling audit and secure-transport support remain necessary.
