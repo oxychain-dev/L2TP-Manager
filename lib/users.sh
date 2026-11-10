@@ -790,11 +790,10 @@ list_users() {
         
         ((user_count++))
         username=$(echo "$line" | awk '{print $1}')
-        password=$(echo "$line" | awk '{print $3}')
         ip_addr=$(echo "$line" | awk '{print $4}')
         
         echo -e "${CYAN}[$user_count] User: ${GREEN}$username${NC}"
-        echo -e "    Password: ${GREEN}$password${NC}"
+        echo -e "    Password: ${YELLOW}[hidden]${NC}"
         echo -e "    Internal IP: ${GREEN}$ip_addr${NC}"
         
         # Find related port forwards
