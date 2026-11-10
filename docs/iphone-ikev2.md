@@ -155,3 +155,32 @@ a complete setup must be checked end to end.
 **State:** architectural guide only. Do not mark iPhone IKEv2 active, or
 individual users "IPsec-enforced", until actual server configuration and
 negative/plaintext-bypass tests are verified.
+
+
+## Mandatory direct dual-stack iPhone profile
+
+In this project's target design **all iPhone IKEv2 users require both
+IPv4 and IPv6 Internet through the ingress/Polaris WAN**. They do not
+exit through GRE/Warden. The IKEv2 service must provide separate,
+non-overlapping IPv4 and IPv6 virtual-IP pools, and accept full-tunnel
+traffic selectors for both IPv4 and IPv6:
+`0.0.0.0/0` and `::/0`. A missing IPv6 VIP, selector, route, or verified
+IPv6 HTTPS egress means dual-stack is NOT complete.
+
+Use a genuinely routed public IPv6 client pool if provided by the ISP,
+or per-deployment ULA + narrowly scoped NAT66 to the ingress host's
+verified WAN IPv6. Do not assume the WAN on-link /64 is routed to clients.
+IKEv2 IPsec XFRM/SAs own the return path; do not use PPP route hooks for
+these accounts. Examine NAT exemption for return packets matching IPsec
+policies, along with effective source policy versus WARP.
+
+strongSwan documents that iOS with an IPv6 pool needs `::/0` included
+in the server's `local_ts`; see
+https://docs.strongswan.org/docs/latest/interop/ios.html.
+Exact deployment requirements and read-only audit:
+[Direct dual-stack egress](direct-dualstack.md).
+
+**No iPhone account creation command is operational until a verified
+IKEv2 service, trusted certificate identity, separate pools and
+credential backend have actually been deployed.** Editing policy
+metadata alone does not create or secure a live user.
