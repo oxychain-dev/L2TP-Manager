@@ -141,3 +141,24 @@ Primary references:
 - https://docs.strongswan.org/docs/latest/features/vip.html
 - https://docs.strongswan.org/docs/latest/interop/ios.html
 - https://docs.strongswan.org/docs/latest/howtos/forwarding.html
+
+## Polaris 2026-11-10 audit notes (operator-observed, not deployment)
+
+- Host IPv4 and IPv6 default routes were both present on the public WAN.
+- Ingress IPv4 forwarded route for ordinary PPP peer selected the public WAN.
+- Host IPv6 HTTPS echo returned the ingress public IPv6 address.
+- A root-owned ULA /48 for direct clients was generated separately from the
+  GRE client's existing ULA. Persist this deployment-local allocation outside Git.
+- WAN kernel `accept_ra=0` **does not by itself demonstrate RA failure**:
+  `systemd-networkd` can manage IPv6 Router Advertisements in userspace while
+  disabling the kernel RA listener. Confirm whether networkd manages the WAN
+  using `networkctl status` and the effective network file before any sysctl
+  change; never blindly set `accept_ra=2` for networkd-managed RA.
+- Existing ingress IPv6 NAT table has no direct-user SNAT. The ordinary PPP
+  client had only IPv6CP link-local; direct IPv6 Internet is NOT yet complete.
+- A targeted, single-client direct ULA route, source policy before WARP,
+  and scoped ingress NAT66 is the next staged test. Confirm real client-side
+  IPv6 assignment and route with its separate router administrator. Do not
+  install generic per-user rules until that test passes.
+
+Docs: https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html
