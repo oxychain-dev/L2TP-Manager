@@ -455,3 +455,29 @@ persistence scripts manage IPv6 only; neither fixes this IPv4 issue.
 **Security gate:** per-user IPsec policy validation is NOT equivalent to
 IPsec protection. Do not enable or advertise per-user IPsec until an
 enforcement path passes negative plaintext-bypass tests.
+
+
+## 11. Selective iPhone IKEv2 implementation track
+
+- [x] Verify Apple's native IKEv2 authentication support and strongSwan
+  iOS interoperability requirements.
+- [x] Document a separately authenticated iPhone IKEv2/IPsec backend,
+  avoiding modifications to existing MikroTik L2TP sessions.
+- [ ] Audit real IKEv2/strongSwan package state, UDP 500/4500 ownership,
+  certificate identity/SAN, public DNS, firewall/XFRM and route policies.
+- [ ] Decide whether iPhone VPN traffic exits at ingress or the remote
+  GRE gateway; assign a **distinct**, conflict-checked virtual-IP pool.
+- [ ] Implement a validated, host-neutral IKEv2 profile and secret backend;
+  test IKEv2 EAP-MSCHAPv2 and/or EAP-TLS on real iOS.
+- [ ] Link global user policy to the relevant IKEv2 credential backend
+  and, when 'IPsec-required' is intended, **disable that account's plaintext
+  L2TP authentication** to prevent downgrade.
+- [ ] Prove user revoke, invalid user rejection, no plaintext bypass,
+  no address collision, no WARP/GRE leaks, IPv4/IPv6 return routing,
+  and unaffected existing sessions.
+- [ ] Productionize with targeted firewall rules, versioned secure config,
+  no global service restart and tested rollback.
+
+See `docs/iphone-ikev2.md`. The current `tools/ipsec-policy.py` only
+records L2TP endpoint policy intent; it is **not yet integrated with
+strongSwan** and should not be presented as operational iPhone IKEv2 support.
