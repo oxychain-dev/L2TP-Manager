@@ -175,3 +175,20 @@ See [iPhone IKEv2 deployment and authentication design](docs/iphone-ikev2.md).
 The repo's existing IPsec policy registry is **metadata only**: an
 actual IKEv2 responder, certificate validation, credential isolation,
 firewall and routing integration have not been deployed by this project.
+
+
+## Required default: direct dual-stack users
+
+**All ordinary L2TP users and all iPhone IKEv2 users must have both IPv4
+and IPv6 Internet connectivity, exiting directly through the L2TP
+ingress/Polaris server rather than GRE/Warden.** Existing explicitly selected
+GRE users keep their separate IPv4/IPv6 route and egress gateway.
+
+See [Direct dual-stack architecture and preflight](docs/direct-dualstack.md).
+Ordinary L2TP requires per-user routed IPv6 addressing in addition to
+IPv6CP link-local; IKEv2 needs two non-overlapping IPv4/IPv6 virtual-IP pools,
+IPv4/IPv6 traffic selectors and verified client dual-stack. A WAN on-link
+IPv6 /64 is **not** automatically a delegated public VPN prefix. When no
+routed public prefix is available, use separate ULA space and scoped NAT66
+to the verified ingress public IPv6. No new live routes/firewall/IPsec
+configurations are made by checking out this repository.
