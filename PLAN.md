@@ -481,3 +481,40 @@ enforcement path passes negative plaintext-bypass tests.
 See `docs/iphone-ikev2.md`. The current `tools/ipsec-policy.py` only
 records L2TP endpoint policy intent; it is **not yet integrated with
 strongSwan** and should not be presented as operational iPhone IKEv2 support.
+
+
+## 12. Non-GRE user requirement: mandatory IPv4 + IPv6 via ingress
+
+**New scope requirement:** all ordinary L2TP users and all native
+iPhone IKEv2 clients have **both** IPv4 and IPv6 routed directly out
+the ingress server. Only explicitly opted-in GRE L2TP clients continue
+to use the remote GRE gateway in both address families.
+
+- [x] Add documented service-class matrix and source/prefix isolation
+  design under `docs/direct-dualstack.md`.
+- [ ] Verify usable ingress IPv4/IPv6 WAN routes, configured global
+  IPv6 addresses and available **routed** client prefix or scoped
+  ULA+NAT66 fallback.
+- [ ] Select separate, collision-checked ULA allocations for ordinary
+  L2TP clients versus iPhone IKEv2 clients versus existing GRE peers.
+- [ ] Implement persistent per-L2TP-client IPv6 /128 assignment,
+  dynamically discovered PPP device return route, optional per-LAN
+  /64 route, on-client source selection and direct-WAN scoped egress.
+- [ ] Implement strongSwan IKEv2 server with **two address pools**
+  (IPv4 and IPv6), full-tunnel dual-family selectors, certificates,
+  individual accounts, and direct-WAN egress policies and scoped NAT.
+- [ ] Verify strongSwan iOS compatibility: server certificate SAN,
+  send_cert=always, EAP-MSCHAPv2/EAP-TLS, IPv6 local_ts including ::/0.
+- [ ] Implement per-client profile source-policy isolation:
+  direct L2TP -> ingress both, iPhone -> ingress both,
+  selected GRE -> GRE gateway both.
+- [ ] Prove real IPv4 and IPv6 HTTPS exit addresses **from each client
+  class**; do not infer success from a working server WAN.
+- [ ] Test IPv6 PMTU, WARP policy interactions, reconnect/reboot and
+  exact rollback; preserve SSH, Docker, existing PPP/GRE, NAT and
+  port forwarding.
+
+**Not yet deployed:** direct IPv6 addressing for ordinary L2TP,
+strongSwan IKEv2 or dual-stack iPhone client pools. Do not mark these
+requirements complete or give a live iPhone username/password command
+until IKEv2 credentials and runtime service are provisioned and tested.
