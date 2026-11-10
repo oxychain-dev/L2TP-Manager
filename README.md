@@ -162,3 +162,16 @@ has been enabled**. See [docs/ipsec-selective.md](docs/ipsec-selective.md).
 
 Security: the users-list command now masks stored passwords, but further
 credential-handling audit and secure-transport support remain necessary.
+
+
+### iPhone / iOS native IKEv2 clients
+
+For selected iPhone users, prefer **native IKEv2/IPsec (separate
+strongSwan backend)** rather than enabling L2TP/IPsec on the currently
+running MikroTik L2TP listener. This uses a separate, non-overlapping
+VPN address pool and individual EAP credentials or certificates.
+
+See [iPhone IKEv2 deployment and authentication design](docs/iphone-ikev2.md).
+The repo's existing IPsec policy registry is **metadata only**: an
+actual IKEv2 responder, certificate validation, credential isolation,
+firewall and routing integration have not been deployed by this project.
