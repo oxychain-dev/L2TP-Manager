@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*.secrets
+**/global-psk.secrets
+**/ikev2-users.json
+**/ipsec-policy.json
+**/direct6.json
+**/ikev2.json
+/backups/

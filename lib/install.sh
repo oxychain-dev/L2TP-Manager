@@ -39,6 +39,7 @@ install_packages() {
 }
 
 configure_l2tp() {
+    validate_vpn_network_settings || return 1
     log "Configuring L2TP server..."
 
     # Backup original config
@@ -57,12 +58,12 @@ configure_l2tp() {
     # Create xl2tpd configuration - listen on all interfaces for better compatibility
     cat > "$L2TP_CONFIG" << EOF
 [global]
-port = 1701
+port = $L2TP_PORT
 access control = no
 
 [lns default]
-ip range = 172.16.101.10-172.16.101.100
-local ip = 172.16.101.1
+ip range = $VPN_IP_START-$VPN_IP_END
+local ip = $VPN_LOCAL_IP
 require chap = yes
 refuse pap = yes
 require authentication = yes
@@ -76,12 +77,12 @@ EOF
     cat > "$PPP_CONFIG" << EOF
 ipcp-accept-local
 ipcp-accept-remote
-ms-dns 8.8.8.8
-ms-dns 8.8.4.4
+ms-dns $VPN_DNS1
+ms-dns $VPN_DNS2
 noccp
 auth
-mtu 1410
-mru 1410
+mtu $VPN_MTU
+mru $VPN_MRU
 nodefaultroute
 debug
 proxyarp
@@ -118,9 +119,9 @@ fix_xl2tpd_config() {
     fi
 
     # Ensure port 1701 is not in use by another process
-    if is_port_listening "1701" "udp" || is_port_listening "1701" "tcp"; then
+    if is_port_listening "$L2TP_PORT" "udp" || is_port_listening "$L2TP_PORT" "tcp"; then
         local blocking_pid
-        blocking_pid=$(ss -tulnp 2>/dev/null | grep ":1701 " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n1)
+        blocking_pid=$(ss -tulnp 2>/dev/null | grep ":$L2TP_PORT " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n1)
         if [[ -n "$blocking_pid" ]]; then
             warning "Port 1701 is blocked by PID $blocking_pid, attempting to kill..."
             kill -9 "$blocking_pid" 2>/dev/null
@@ -135,6 +136,7 @@ fix_xl2tpd_config() {
 }
 
 configure_firewall() {
+    validate_vpn_network_settings || return 1
     log "Configuring firewall and IP forwarding..."
     echo
 
@@ -157,10 +159,19 @@ configure_firewall() {
     # Configure iptables with detected interface
     echo -e "${CYAN}[2/4]${NC} Configuring firewall rules..."
 
-    firewall_add_rule -t nat -A POSTROUTING -s 172.16.101.0/24 -o "$DEFAULT_INTERFACE" -j MASQUERADE
-    firewall_add_rule -A FORWARD -s 172.16.101.0/24 -j ACCEPT
-    firewall_add_rule -A FORWARD -d 172.16.101.0/24 -j ACCEPT
-    firewall_add_rule -A INPUT -p udp --dport 1701 -j ACCEPT
+    firewall_add_rule -t nat -A POSTROUTING -s "$VPN_SUBNET" -o "$DEFAULT_INTERFACE" -j MASQUERADE
+    firewall_add_rule -A FORWARD -s "$VPN_SUBNET" -j ACCEPT
+    firewall_add_rule -A FORWARD -d "$VPN_SUBNET" -j ACCEPT
+    firewall_add_rule -A INPUT -p udp --dport "$L2TP_PORT" -j ACCEPT
+
+    # TCP MSS adjustment scoped to forwarded PPP connections.
+    for direction in -i -o; do
+        if ! firewall_check_rule -t mangle -C FORWARD "$direction" ppp+ \
+            -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu; then
+            firewall_add_rule -t mangle -I FORWARD 1 "$direction" ppp+ \
+                -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu || return 1
+        fi
+    done
 
     echo -e "${GREEN}✓${NC} Firewall rules configured (interface: $DEFAULT_INTERFACE, backend: $fw_backend)\n"
 
@@ -399,14 +410,14 @@ uninstall_server() {
     echo -e "${CYAN}[5/9]${NC} Removing firewall rules..."
 
     # Remove L2TP INPUT rules
-    firewall_del_rule -D INPUT -p udp --dport 1701 -j ACCEPT
+    firewall_del_rule -D INPUT -p udp --dport "$L2TP_PORT" -j ACCEPT
 
     # Remove L2TP FORWARD rules (only for our subnet)
-    firewall_del_rule -D FORWARD -s 172.16.101.0/24 -j ACCEPT
-    firewall_del_rule -D FORWARD -d 172.16.101.0/24 -j ACCEPT
+    firewall_del_rule -D FORWARD -s "$VPN_SUBNET" -j ACCEPT
+    firewall_del_rule -D FORWARD -d "$VPN_SUBNET" -j ACCEPT
 
     # Remove NAT rules for L2TP
-    firewall_del_rule -t nat -D POSTROUTING -s 172.16.101.0/24 -o "$DEFAULT_INTERFACE" -j MASQUERADE
+    firewall_del_rule -t nat -D POSTROUTING -s "$VPN_SUBNET" -o "$DEFAULT_INTERFACE" -j MASQUERADE
 
     # Remove port forward rules from config file
     if [[ -f /etc/l2tp-forwards.conf ]]; then
@@ -422,11 +433,8 @@ uninstall_server() {
 
     echo -e "${GREEN}✓${NC} Firewall rules removed"
 
-    # Disable IP forwarding
-    echo -e "${CYAN}[6/9]${NC} Disabling IP forwarding..."
-    sed -i '/net.ipv4.ip_forward=1/d' /etc/sysctl.conf 2>/dev/null
-    sysctl -w net.ipv4.ip_forward=0 >/dev/null 2>&1
-    echo -e "${GREEN}✓${NC} IP forwarding disabled"
+    # Shared hosts may use forwarding for GRE, other VPNs and containers.
+    echo -e "${CYAN}[6/9]${NC} Preserving shared IPv4 forwarding..."
 
     # Remove packages if requested
     if [[ $remove_packages =~ ^[yY]$ ]]; then
@@ -453,13 +461,7 @@ uninstall_server() {
     # Final cleanup and verification
     echo -e "${CYAN}[9/9]${NC} Final verification..."
 
-    # Kill any remaining ppp processes
-    pkill -9 pppd 2>/dev/null || true
-
-    # Remove any remaining ppp interfaces
-    for iface in $(ip link show | grep "ppp" | cut -d: -f2 | tr -d ' '); do
-        ip link delete "$iface" 2>/dev/null || true
-    done
+    # Do not terminate unrelated PPP sessions or delete their links.
 
     echo -e "${GREEN}✓${NC} Final cleanup completed"
 
@@ -478,10 +480,10 @@ uninstall_server() {
     echo -e "     - All backup files"
     echo -e "   • Firewall rules: ${GREEN}✓ Removed${NC}"
     echo -e "     - L2TP port (1701)"
-    echo -e "     - NAT rules for 172.16.101.0/24"
+    echo -e "     - NAT rules for $VPN_SUBNET"
     echo -e "     - FORWARD rules"
     echo -e "     - Port forwarding rules"
-    echo -e "   • IP forwarding: ${GREEN}✓ Disabled${NC}"
+    echo -e "   • IP forwarding: ${YELLOW}Preserved (shared host setting)${NC}"
     echo -e "   • System files: ${GREEN}✓ Cleaned${NC}"
     if [[ $remove_packages =~ ^[yY]$ ]]; then
         echo -e "   • Packages: ${GREEN}✓ Uninstalled (xl2tpd, ppp, socat)${NC}"

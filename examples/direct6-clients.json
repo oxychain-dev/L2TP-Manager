@@ -1,0 +1,13 @@
+{
+  "wan_interface": "",
+  "wan_ipv6": "",
+  "direct_prefix": "",
+  "table": 0,
+  "priority": 0,
+  "clients": [
+    {
+      "peer_ipv4": "",
+      "client_ipv6": ""
+    }
+  ]
+}

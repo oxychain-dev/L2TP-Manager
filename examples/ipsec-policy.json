@@ -1,0 +1,8 @@
+{
+  "global": {
+    "mode": "disabled",
+    "default_user_policy": "plaintext"
+  },
+  "endpoints": {},
+  "users": {}
+}
