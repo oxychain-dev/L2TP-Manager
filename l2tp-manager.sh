@@ -90,7 +90,7 @@ while true; do
 
                 if install_packages && configure_l2tp && configure_firewall && start_services && create_forwards_service && init_forwards_config; then
                     echo -e "\n${GREEN}✓ L2TP Server installation completed successfully!${NC}"
-                    echo -e "${GREEN}✓ Server IP: $PUBLIC_IP:1701${NC}"
+                    echo -e "${GREEN}✓ Server IP: $PUBLIC_IP:$L2TP_PORT${NC}"
                     echo -e "${GREEN}✓ Interface: $DEFAULT_INTERFACE${NC}"
                     echo -e "${GREEN}✓ You can now add users and configure port forwards${NC}"
                 else

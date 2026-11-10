@@ -1,0 +1,10 @@
+{
+  "wan_interface": "",
+  "wan_ipv4": "",
+  "server_id": "",
+  "certificate": "",
+  "ipv4_pool": "",
+  "ipv6_pool": "",
+  "excluded_ipv4": [],
+  "excluded_ipv6": []
+}

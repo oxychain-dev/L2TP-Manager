@@ -193,7 +193,7 @@ add_user_manual() {
     echo -e "${CYAN}===============================================${NC}"
     echo -e "${YELLOW}📋 Connection Details:${NC}"
     echo -e "${CYAN}Server IP:   ${NC}$PUBLIC_IP"
-    echo -e "${CYAN}L2TP Port:   ${NC}1701"
+    echo -e "${CYAN}L2TP Port:   ${NC}$L2TP_PORT"
     echo -e "${CYAN}Username:    ${NC}$username"
     echo -e "${CYAN}Password:    ${NC}$password"
     echo -e "${CYAN}Static IP:   ${NC}$ip_addr"
@@ -790,11 +790,10 @@ list_users() {
         
         ((user_count++))
         username=$(echo "$line" | awk '{print $1}')
-        password=$(echo "$line" | awk '{print $3}')
         ip_addr=$(echo "$line" | awk '{print $4}')
         
         echo -e "${CYAN}[$user_count] User: ${GREEN}$username${NC}"
-        echo -e "    Password: ${GREEN}$password${NC}"
+        echo -e "    Password: ${YELLOW}[hidden]${NC}"
         echo -e "    Internal IP: ${GREEN}$ip_addr${NC}"
         
         # Find related port forwards

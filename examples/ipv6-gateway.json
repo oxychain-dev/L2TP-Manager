@@ -1,0 +1,9 @@
+{
+  "role": "gateway",
+  "client_ipv6": "",
+  "lan_prefix": "",
+  "gre_interface": "",
+  "gre_peer_ipv6": "",
+  "wan_interface": "",
+  "wan_ipv6": ""
+}
