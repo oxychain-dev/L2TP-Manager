@@ -1,5 +1,32 @@
 # PLAN.md — L2TP Manager Modernization and Dual-Stack GRE Egress
 
+## ACTIVE STATUS AND DELIVERY PLAN — 2026-11-10
+
+> **Canonical, evidence-based request/status tracker:** [Full Persian execution plan — every requirement, current status, prerequisites, milestones, acceptance criteria and rollback](docs/EXECUTION-PLAN-2026-11-10.fa.md).
+>
+> **Most recent verified outcome:** a *direct* ordinary L2TP client on ingress Polaris successfully sent 5/5 IPv6 pings and fetched its public IPv6 address via HTTPS after a manually applied PPP interface rebind. The client switched from ppp1 to ppp0, breaking the pilot's interface-specific rules. The manual repair worked, **but its rules are not persistent**.
+>
+> **Do not conflate:** (1) a successful packet-path test, (2) a running production-safe reconnect reconciler, (3) successful reboot, (4) generic multi-user support, and (5) deployed selective IPsec. These are distinct release gates.
+
+| Request group | Latest evidence-based status | Next release gate |
+|---|---|---|
+| Ordinary L2TP IPv4 direct ingress | **Verified on one existing client** | Reconnect/regression and more users |
+| Ordinary L2TP IPv6 direct ingress | **Verified pilot on one existing client; NOT persistent** | PPP-event reconciler, stable per-user allocation, WAN RA sync, reboot |
+| Selected GRE IPv6 via remote egress | **Earlier real-client IPv6/HTTPS test passed; timers present** | Confirm current reconnection, fail-closed and reboot |
+| Selected GRE IPv4 via remote egress | **Ingress source route + remote route/NAT present; not retested end-to-end** | Real-client IPv4 exit and gateway counters, persistence |
+| All ordinary L2TP users dual-stack | **Not implemented generally** | Per-user allocation, lifecycle, CLI, tests |
+| iPhone IKEv2/IPsec dual-stack, direct ingress | **Not deployed** | strongSwan, dual VIP pools, cert, authenticated test and IPv4/IPv6 egress |
+| Selective global IPsec user policies | **Metadata/schema validation only** | Enforced credential/endpoint separation, plaintext-downgrade denial |
+| General QA/security/reboot | **Partially completed** | Controlled failure/reconnect/reboot/rollback and PR review |
+
+**Next implementation priority:** stabilize direct L2TP IPv6 after PPP renumbering (P1), then finish GRE IPv4 and all-user dual-stack (P2–P3), then iPhone IKEv2 (P4) and enforced optional IPsec (P5). Preserve existing production connectivity throughout.
+
+**Historical note:** the sections M0–M10 and subsequent dated sections **below** are a cumulative roadmap and may describe earlier states. Prefer the linked active tracker when status statements conflict; do not silently treat historical pending work as complete.
+
+---
+
+
+
 > **Purpose:** execution-oriented roadmap covering the requirements established through the L2TP deployment, Linux firewall/persistence work, RouterOS troubleshooting, IPv4 GRE source routing, IPv6 over GRE, and generalization of this repository.
 >
 > **Status date:** 2026-11-09. Statements about live hosts are **historical operator-supplied observations**, not proof of their current state. GitHub repository edits do not equal production deployment.
