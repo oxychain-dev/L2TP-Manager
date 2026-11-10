@@ -45,6 +45,10 @@ def parse_config(path):
     if not file.is_file() or file.is_symlink() or st.st_uid != 0 or st.st_mode & 0o077:
         raise Failure("Require root-owned regular JSON, mode 0600")
     cfg = json.loads(file.read_text(encoding="utf-8"))
+    return validate_config(cfg)
+
+
+def validate_config(cfg):
     required = {"wan_interface", "wan_ipv6", "direct_prefix",
                 "table", "priority", "clients"}
     if not isinstance(cfg, dict) or set(cfg) != required:
@@ -164,12 +168,15 @@ def sync_chain(desired, dry):
     jump_rules = get_rules("FORWARD")
     if jump_rules is None:
         raise Failure("FORWARD chain unavailable")
-    if JUMP not in jump_rules:
-        emit(["ip6tables", "-w", "5", "-I", "FORWARD", "1"] + JUMP, dry)
     for old in current:
         # This is a privately owned chain. Refuse to delete unknown rules.
         if TAG not in old:
             raise Failure("Unrecognized rule in privately owned chain")
+    if JUMP not in jump_rules:
+        emit(["ip6tables", "-w", "5", "-I", "FORWARD", "1"] + JUMP, dry)
+    elif jump_rules and jump_rules[0] != JUMP:
+        emit(["ip6tables", "-w", "5", "-D", "FORWARD"] + JUMP, dry)
+        emit(["ip6tables", "-w", "5", "-I", "FORWARD", "1"] + JUMP, dry)
     if desired == current:
         return
     # Insert the new rules first, before removing stale rules. Short-lived
