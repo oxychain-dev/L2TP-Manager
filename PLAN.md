@@ -404,3 +404,54 @@ There is no universal, context-free rollback script that can safely delete live 
 - [ ] Draft PR reviewed, then explicitly approved for merge. Production deployment separately authorized and validated.
 
 **Final status criterion:** repository completion, host deployment, and client IPv6 Internet reachability are three separate milestones. Never mark the entire project COMPLETE from a successful source commit or a successful GRE peer ping alone.
+
+
+## 10. New findings and implementation, 2026-11-10
+
+**Observed:** selected PPP client has a functioning link to the L2TP
+ingress, but selected-client IPv4 public destinations timed out while a
+different existing PPP client reached those destinations. Previously the
+selected client's IPv6 route via GRE/WAN SNAT was independently verified.
+
+**Inference, not confirmed cause:** IPv4 return routing, NAT44 and/or
+forward policy on the GRE egress gateway may be missing or routing via
+an unintended WAN/WARP table. The two previously installed l2tp6
+persistence scripts manage IPv6 only; neither fixes this IPv4 issue.
+
+### Repository additions
+
+- [x] Add opt-in client-scoped `tools/ipv4-gre-egress.py` for IPv4 GRE
+  return /32, NAT44 and stateful forwarding on the egress host only.
+- [x] Fail safely if the verified forwarded source route does not choose
+  the configured WAN; do not rewrite global default routes or WARP.
+- [x] Add dedicated optional systemd oneshot+timer installer for IPv4
+  reconciliation after tested application.
+- [x] Add a root-owned global security policy schema and per-user
+  `plaintext` / `ipsec-required` **metadata validation**.
+- [x] Document why IPsec selection cannot be safely enforced by PPP
+  username on one shared L2TP listener.
+- [x] Add unit checks for listener separation, security-policy consistency,
+  and narrow GRE IPv4 rule scope; mask stored passwords in list-users.
+
+### Still NOT done
+
+- [ ] Obtain current Warden read-only IPv4 `ip rule` / `ip route get ...
+  iif gre` / `iptables -t nat` / `rp_filter` / reverse-route evidence
+  before declaring a root cause or changing any host.
+- [ ] Verify that the egress helper is conflict-safe with real Warden
+  Docker/WARP/nft and is idempotent under reconnect and reboot.
+- [ ] Test actual selected MikroTik client IPv4 to Internet after
+  applying the smallest corrected gateway route/NAT scope.
+- [ ] Deploy/validate persistence on live hosts only with approved
+  rollback and clean baseline. Nothing in this repository is auto-deployed.
+- [ ] Implement and test actual IPsec-enforced isolated L2TP endpoints
+  with separate credential visibility and plaintext-denial policy.
+- [ ] Verify protected accounts CANNOT authenticate on the plaintext
+  listener; review IKE/ESP compatibility and multiple clients behind NAT.
+- [ ] Add runtime enforcement status to per-user management UI only
+  after authoritative XFRM/SA and listener checks exist.
+- [ ] Audit other code that still prints passwords outside list-users.
+
+**Security gate:** per-user IPsec policy validation is NOT equivalent to
+IPsec protection. Do not enable or advertise per-user IPsec until an
+enforcement path passes negative plaintext-bypass tests.
