@@ -13,9 +13,10 @@ jobs:
           for f in l2tp-manager.sh lib/*.sh config/defaults.conf; do bash -n "$f"; done
           bash -n tests/network.sh
           bash -n tools/install-ipv4-egress-persistence.sh
+          bash -n tools/install-direct6-persistence.sh
       - name: Python syntax and ULA generator
         run: |
-          python3 -m py_compile tools/ipv6-gre.py tools/ipv4-gre-egress.py tools/ipsec-policy.py
+          python3 -m py_compile tools/ipv6-gre.py tools/ipv4-gre-egress.py tools/ipsec-policy.py tools/direct6-reconcile.py tools/global-psk.py
           python3 tools/ipv6-gre.py generate-ula
       - name: IPv4 egress and IPsec policy safety unit tests
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
