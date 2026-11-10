@@ -162,3 +162,33 @@ Primary references:
   install generic per-user rules until that test passes.
 
 Docs: https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html
+
+
+## Verified pilot follow-up — 2026-11-10
+
+This section **supersedes the earlier audit's pending-pilot status**, without
+claiming production readiness.
+
+- The ordinary L2TP direct client was assigned its own ULA /128 from
+  the dedicated non-GRE site prefix and obtained a specific IPv6
+  direct-egress routing table and narrowly scoped ingress-WAN NAT66.
+- A PPP reconnect changed the interface name. The manually installed
+  FORWARD rules still targeted the old PPP interface and the client
+  return route disappeared. A pilot DROP rule counted exactly five
+  packets during five unsuccessful pings. This failure demonstrates why
+  a production reconciler must not cache PPP interface numbers.
+- After manually rebinding the current PPP interface and fixing its
+  return route, a **real MikroTik-sourced IPv6 ping succeeded 5/5** and
+  an HTTPS IPv6 echo returned the **ingress/Polaris public IPv6**.
+- A real-client **IPv6 direct egress test is now verified for one client**.
+  However, that test did not verify automatic reconnect, multiple
+  users, LAN-wide IPv6, reboot persistence or iPhone IKEv2.
+- The router's global main-table IPv6 default is currently directed
+  over the ordinary L2TP connection, with a more distant blackhole
+  backup route. Source-specific RouterOS isolation for multiple
+  simultaneous IPv6 uplinks is a separate router-admin requirement.
+- Preserve the selected GRE client's distinct source-policy, ULA
+  address, NAT and remote gateway unchanged.
+
+The canonical status and acceptance gates for the whole deployment
+are in [Execution plan](EXECUTION-PLAN-2026-11-10.fa.md).
