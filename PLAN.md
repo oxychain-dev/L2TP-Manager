@@ -1,5 +1,13 @@
 # PLAN.md — L2TP Manager Modernization and Dual-Stack GRE Egress
 
+## IMPLEMENTATION STATUS — 2026-11-10 (development source, not production)
+
+- Implemented and source-tested: configurable multi-client `tools/direct6-reconcile.py`, guarded PPP-hook+timer installer, scoped legacy pilot migration tool, global on-host PSK generator, and iPhone dual-family IKEv2 **candidate renderer** with per-user EAP registry. See [safe deployment gates](docs/STABLE-DEPLOYMENT-GATES.md).
+- Verified historical live traffic: ordinary L2TP `.10` IPv4 and IPv6 direct Polaris; selected GRE `.11` IPv6 through Warden; IPv4 remote egress still requires fresh real-client verification.
+- NOT VERIFIED OR DEPLOYED: new direct6 reconciler/installer on Polaris, new Warden IPv4 persistence, strongSwan IKEv2 endpoint, per-user IPsec enforcement, certificate/pool, iPhone dual-stack and controlled reboot/rollback tests.
+- A global PSK file does not itself enable secure L2TP, distinguish user identities, or prevent plaintext downgrade. Without a separate protected endpoint, `ipsec-required` remains metadata only.
+- The feature can be integrated into a development branch when source tests pass, while production/main release gates remain OPEN.
+
 ## ACTIVE STATUS AND DELIVERY PLAN — 2026-11-10
 
 > **Canonical, evidence-based request/status tracker:** [Full Persian execution plan — every requirement, current status, prerequisites, milestones, acceptance criteria and rollback](docs/EXECUTION-PLAN-2026-11-10.fa.md).
