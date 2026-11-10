@@ -192,3 +192,15 @@ IPv6 /64 is **not** automatically a delegated public VPN prefix. When no
 routed public prefix is available, use separate ULA space and scoped NAT66
 to the verified ingress public IPv6. No new live routes/firewall/IPsec
 configurations are made by checking out this repository.
+
+
+### Current execution status — 2026-11-10
+
+See the [comprehensive, evidence-based Persian implementation and status plan](docs/EXECUTION-PLAN-2026-11-10.fa.md) and the [active PLAN.md status table](PLAN.md#active-status-and-delivery-plan--2026-11-10).
+
+An ordinary L2TP client has now passed a real IPv6 ping and public-IPv6
+HTTPS test through the ingress host **after a manual PPP interface rebind**.
+The pilot is still nonpersistent and not generalized to multiple users.
+The selective GRE user's IPv4 remote egress needs a fresh client-side
+test; the iPhone IKEv2 responder and user provisioning are not deployed.
+No GitHub commit or CI check implies production deployment.
