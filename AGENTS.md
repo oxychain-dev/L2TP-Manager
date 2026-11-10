@@ -215,3 +215,21 @@ A feature is done only when its documented acceptance tests pass for its promise
 - RFC 8200 (IPv6): https://www.rfc-editor.org/rfc/rfc8200
 
 Check upstream documentation against the exact installed system versions. Sources are supporting references, not instructions to execute commands blindly.
+
+
+### Mandatory direct dual-stack service classes
+
+All non-GRE users must have **real IPv4 AND IPv6 Internet** through the
+ingress server (ordinary L2TP and iPhone IKEv2). Only explicitly
+selected GRE L2TP users use the remote GRE egress in both families.
+Implement per-client source/route isolation, not a global change to the
+host default route. Do not publish dual-stack readiness if either client
+family cannot reach an external public destination.
+
+Ordinary PPP IPv6CP link-local is insufficient; allocate stable per-user
+IPv6 /128 (optional LAN /64), dynamic PPP return route and direct IPv6
+egress with routed public prefix or scoped ULA NAT66. IKEv2 needs
+separate IPv4/IPv6 VIP pools and XFRM-aware forwarding. iOS with IPv6
+pool requires IPv6 default traffic selector ::/0. The ingress WAN
+on-link /64 is not proof of delegated routing to clients. See
+`docs/direct-dualstack.md`.
