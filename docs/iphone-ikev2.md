@@ -97,7 +97,7 @@ Determine what is already installed and bound, using the actual host:
     command -v "$cmd" || true
   done
   echo '=== XFRM ==='
-  sudo ip xfrm state list
+  sudo ip xfrm state count
   sudo ip xfrm policy list
   echo '=== Existing services ==='
   systemctl list-units --all --type=service |
@@ -111,8 +111,10 @@ Determine what is already installed and bound, using the actual host:
 ~~~
 
 This command does not install or restart services and does not create
-credentials. Share only sanitized outputs. XFRM state can expose peer IPs
-and security policy metadata.
+credentials. Share only sanitized outputs. **Do not paste raw
+`ip xfrm state list` output**: it can expose IPsec key material.
+`ip xfrm state count` avoids displaying Security Association keys.
+XFRM policies may still expose peer IPs and internal selectors.
 
 ### iPhone manual VPN form (after server is deployed)
 
