@@ -553,3 +553,32 @@ to use the remote GRE gateway in both address families.
 strongSwan IKEv2 or dual-stack iPhone client pools. Do not mark these
 requirements complete or give a live iPhone username/password command
 until IKEv2 credentials and runtime service are provisioned and tested.
+
+
+## Android/iPhone portable profile milestone — 2026-11-13
+
+- [x] Implement **password-free iPhone .mobileconfig** generator for
+  Apple-managed IKEv2, server DNS/certificate identity and EAP user.
+- [x] Implement **password-free Android .sswan** generator for strongSwan
+  VPN Client, individual EAP user and dual-family full-tunnel leak blocks.
+- [x] Validate identities against the existing private IKEv2 user
+  registry, use root-owned output directory and prevent overwrites.
+- [x] Add unit tests verifying XML/JSON syntax, no embedded password,
+  no L2TP/IPsec global PSK and intended both-family profile settings.
+- [x] Document exact mobile import and server prerequisites in
+  [docs/mobile-profiles.md](docs/mobile-profiles.md).
+- [ ] Audit/obtain public DNS and trusted server cert, and validate
+  non-overlapping real iPhone/Android IPv4/IPv6 VIP pools.
+- [ ] Deploy actual strongSwan IKEv2 service and root-only EAP users
+  with approved firewall/XFRM/NAT/routing, not from unreviewed auto-run.
+- [ ] Produce real device-user profile files from verified host config
+  and activate them only after IKE/CHILD SA validation.
+- [ ] Validate Android and iPhone IPv4+IPv6 HTTPS public Polaris
+  egress, Wi-Fi/mobile transitions, invalid user rejection,
+  live account revocation, reconnect, reboot, rollback and L2TP
+  regression.
+- [ ] Integrate optional Global L2TP/IPsec PSK with a separate
+  enforced listener if required; this is NOT required for IKEv2/EAP.
+
+**Scope note:** source-level generators are finished; operational mobile
+VPN provision, server security and actual client acceptance are NOT.
