@@ -92,6 +92,20 @@ def check_users(users):
     return users
 
 
+def create_new_registry(path):
+    """Create the user registry exactly once, without a server configuration."""
+    parent = path.parent
+    if not parent.is_dir() or parent.is_symlink() or parent.stat().st_uid != 0 or parent.stat().st_mode & 0o022:
+        raise Invalid("User registry parent must exist and be root-owned, not writable by others")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        os.fchmod(stream.fileno(), 0o600)
+        stream.write("{}\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def atomic_json(path, data):
     parent = path.parent
     if not parent.is_dir() or parent.is_symlink() or parent.stat().st_uid != 0 or parent.stat().st_mode & 0o022:
@@ -149,21 +163,28 @@ def main():
     args = ap.parse_args()
     if os.geteuid() != 0:
         raise Invalid("Root required")
-    cfg = check_config(root_file(args.config))
     path = Path(args.users)
-    if args.action == "audit":
-        if path.exists():
-            print("Valid users:", len(check_users(root_file(path))))
-        print("Valid host-local config. No daemon/certificate/client test performed.")
-        return
+    # Credential registry operations do not require an installed IKEv2
+    # daemon, certificate or server host configuration.
     if args.action == "init-users":
-        if path.exists() or path.is_symlink():
-            raise Invalid("Users file already exists")
-        atomic_json(path, {})
+        create_new_registry(path)
         print("Created private EAP credential registry, no active strongSwan changes")
         return
-    users = check_users(root_file(path))
+    if args.action == "audit":
+        if path.exists() or path.is_symlink():
+            print("Valid users:", len(check_users(root_file(path))))
+        else:
+            print("IKEv2 EAP registry: not created")
+        config_path = Path(args.config)
+        if config_path.exists() or config_path.is_symlink():
+            check_config(root_file(config_path))
+            print("IKEv2 host configuration valid as JSON/schema (not deployed)")
+        else:
+            print("IKEv2 host configuration: not created")
+        print("No IKEv2 daemon/certificate/client connectivity verified")
+        return
     if args.action in ("add-user", "disable-user"):
+        users = check_users(root_file(path))
         name = args.username or ""
         if not NAME.fullmatch(name):
             raise Invalid("Valid --username required")
@@ -181,6 +202,8 @@ def main():
         atomic_json(path, users)
         print("Local EAP registry updated. NOT loaded into strongSwan; existing SAs NOT terminated.")
         return
+    cfg = check_config(root_file(args.config))
+    users = check_users(root_file(path))
     if not args.output:
         raise Invalid("--output is required for render")
     output = Path(args.output)
