@@ -236,3 +236,27 @@ use IPsec. Use an independently authenticated, IPsec-only endpoint
 and test plaintext denial before enabling protected accounts.
 For iPhone IKEv2 individual users, the EAP/certificate design is
 different from an L2TP global PSK.
+
+
+## Android and iPhone — portable IKEv2 VPN profiles (development)
+
+A **single separate** IKEv2/IPsec responder can serve Android and iPhone
+with individual EAP-MSCHAPv2 users and **direct ingress/Polaris IPv4
+and IPv6** egress (not GRE/Warden). Source support now includes:
+
+- `tools/ikev2-dualstack.py`: root-only EAP account registry and an
+  **inactive swanctl server candidate**, with validated IPv4/IPv6 pools.
+- `tools/mobile-profiles.py`: portable password-free
+  `username.mobileconfig` for Apple's native IKEv2 client and
+  `username.sswan` for the Android strongSwan VPN Client.
+- `tests/test_mobile_profiles.py`: format checks, full-tunnel fields
+  and no PSK/password/private key embedded.
+
+[Mobile setup, server prerequisites and commands](docs/mobile-profiles.md)
+
+**Not yet deployed:** Polaris IKEv2 service, trusted hostname/certificate,
+non-overlapping live virtual address pools, public-WAN NAT for IKEv2,
+active mobile accounts, reconnect and IPv4+IPv6 phone tests.
+The existing global L2TP/IPsec PSK remains a **different** machine-level
+secret and is never distributed in IKEv2/EAP profiles. Profile generation
+does not imply a working VPN.
