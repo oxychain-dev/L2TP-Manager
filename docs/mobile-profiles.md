@@ -147,3 +147,43 @@ Official format and compatibility docs:
 - https://developer.apple.com/documentation/devicemanagement/vpn/ikev2-data.dictionary
 - https://docs.strongswan.org/docs/latest/os/androidVpnClientProfiles.html
 - https://docs.strongswan.org/docs/latest/interop/ios.html
+
+
+## Current operational correction — 2026-11-13
+
+The operator verified on Polaris that `xl2tpd` owns UDP 1701,
+`swanctl`/strongSwan are not installed, there is no IPsec SA
+and `/etc/l2tp-manager/ikev2.json` is absent. Trying `init-users`
+and `add-user` with the earlier backend failed because it incorrectly
+read the absent server JSON before dispatching subcommands.
+
+**Fixed in development:** `init-users`, `add-user` and `disable-user`
+can operate on the root-only EAP credential registry *without*
+the IKEv2 server host JSON. `audit` reports missing config without
+failing. `render` still *requires* audited host JSON and server
+certificate, as intended. This is source/CI-verified only; the
+updated code needs to be fetched into Polaris's separate worktree.
+
+For the first EAP credential registry on Polaris (do not rerun
+`init-users` once the file exists):
+
+~~~bash
+(
+  source="$HOME/L2TP-Manager-development"
+  sudo python3 "$source/tools/ikev2-dualstack.py" audit
+  sudo python3 "$source/tools/ikev2-dualstack.py" init-users
+  sudo python3 "$source/tools/ikev2-dualstack.py" audit
+)
+~~~
+
+To prepare an individually authenticated mobile account before
+installing strongSwan, `add-user --username` prompts for a secret
+interactively and records it in the root-only registry. This is a
+**staged offline account**; no active IKE_SA, CHILD_SA or real VPN
+access is created. Generate import files only after the real
+server DNS name, X.509 certificate and two IP pools are configured.
+
+Never insert a dummy DNS hostname, empty certificate, guessed VPN
+address pool or a secret into tracked Git source just to silence
+a missing config error. The existing global PSK file is unrelated
+to iPhone/Android IKEv2 EAP authentication.
