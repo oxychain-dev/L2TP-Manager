@@ -582,3 +582,29 @@ until IKEv2 credentials and runtime service are provisioned and tested.
 
 **Scope note:** source-level generators are finished; operational mobile
 VPN provision, server security and actual client acceptance are NOT.
+
+
+## Simple IP-only L2TP/IPsec PSK request — 2026-11-13
+
+- [x] Verify iOS L2TP/IPsec PSK supports an IP address rather than DNS/certificate.
+- [x] Identify modern Android 12+ native L2TP client removal and
+  separate IKEv2/IPsec PSK compatibility requirements.
+- [x] Add candidate-only `tools/l2tp-ipsec-psk.py` to use
+  the existing secure random on-host global PSK; never print secret.
+- [x] Add pure tests and [operator runbook](docs/ip-only-l2tp-ipsec.md).
+- [ ] Audit installed charon version, Ubuntu packages, UDP 500/4500,
+  source IP, existing plaintext 1701 and XFRM Netfilter policy.
+- [ ] Install strongSwan safely and load validated IP-only IKEv1
+  transport PSK connection; confirm iPhone native L2TP connection,
+  matching IKE/CHILD SA and PPP username.
+- [ ] Verify no plaintext downgrade for any account that is
+  explicitly required to use IPsec, without breaking current
+  MikroTik plaintext users. Do not claim 'IPsec required' yet.
+- [ ] Add independent IP-only IKEv2/IPsec PSK server and mobile
+  candidate for modern Android, with separate IPv4/IPv6 pools;
+  do not pretend Android's IKEv2 mode is L2TP.
+- [ ] Confirm real IPv4/IPv6 public Polaris egress on mobile,
+  reconnect, NAT-T concurrency and reboot/rollback before release.
+
+**Current PSK is a generated private random secret**, NOT the literal
+user-proposed short label. Do not put fixed/predictable PSK into Git.
