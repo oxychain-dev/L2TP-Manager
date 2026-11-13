@@ -260,3 +260,27 @@ active mobile accounts, reconnect and IPv4+IPv6 phone tests.
 The existing global L2TP/IPsec PSK remains a **different** machine-level
 secret and is never distributed in IKEv2/EAP profiles. Profile generation
 does not imply a working VPN.
+
+
+## Simple IP-address L2TP/IPsec PSK for iPhone (development)
+
+If a mobile client can use Apple's built-in **L2TP** VPN type,
+it can enter **the current public Polaris IPv4**, its normal
+PPP login/password and the machine-global PSK. No VPN domain or
+TLS certificate is required for this **legacy IKEv1 L2TP/IPsec** path.
+See [IP-only L2TP/IPsec setup and safety gates](docs/ip-only-l2tp-ipsec.md).
+
+New `tools/l2tp-ipsec-psk.py` stages a protected root-only strongSwan
+IKEv1/transport-mode candidate using the **existing randomly
+generated global PSK**, without printing the PSK or modifying any
+daemon, xl2tpd, PPP, IPsec/XFRM or firewall rule.
+
+**Not deployed:** strongSwan, UDP 500/4500, IKEv1 transport SA and
+mobile L2TP/IPsec integration on Polaris still need real operator
+validation. The existing PSK is random and is NOT a literal brand
+string. Do not claim IPsec-only user enforcement on the shared
+plaintext L2TP listener.
+
+**Modern Android:** Android 12+ frequently lacks a built-in L2TP
+client. IP-only **IKEv2/IPsec PSK** is a distinct Android profile and
+requires its own backend/pool configuration; don't mislabel it L2TP.
