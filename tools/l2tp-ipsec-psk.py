@@ -17,7 +17,7 @@ import subprocess
 import sys
 
 CANONICAL_PSK = Path("/etc/l2tp-manager/global-psk.secrets")
-PSK_FORMAT = re.compile(r'^: PSK "([^"\r\n]+)"\n
+PSK_FORMAT = re.compile(r'^: PSK "([^"\r\n]+)"\n$')
 
 
 class Stop(Exception):
