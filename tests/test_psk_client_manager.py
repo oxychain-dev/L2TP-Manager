@@ -24,9 +24,15 @@ class SharedPskTests(unittest.TestCase):
 
     def test_root_psk_format(self):
         self.assertIsNotNone(psk.PSK_LINE.fullmatch(': PSK "' + "x" * 64 + '"\n'))
-        self.assertIsNone(psk.PSK_LINE.fullmatch(': PSK "oxychain"\n'))
-        self.assertIsNone(psk.PSK_LINE.fullmatch(': PSK "bad secret"\n'))
-
+        self.assertIsNotNone(psk.PSK_LINE.fullmatch(': PSK "SimpleKey123!"\n'))
+        self.assertIsNotNone(psk.PSK_LINE.fullmatch(': PSK "manuallyChanged123"\n'))
+        self.assertIsNone(psk.PSK_LINE.fullmatch(': PSK "bad"quote"\n'))
+        self.assertTrue(psk.valid_psk("Short!123", minimum=8, maximum=64, for_new=True))
+        self.assertTrue(psk.valid_psk("Special$#&!123", minimum=8, maximum=64, for_new=True))
+        self.assertFalse(psk.valid_psk("short", minimum=8, maximum=64, for_new=True))
+        self.assertFalse(psk.valid_psk("space wrong", minimum=8, maximum=64, for_new=True))
+        self.assertFalse(psk.valid_psk("bad\\path123", minimum=8, maximum=64, for_new=True))
+        self.assertFalse(psk.valid_psk("x"*65, minimum=8, maximum=64, for_new=True))
     def test_swanctl_secret_match(self):
         config = 'connections {\n}\nsecrets {\n  ike-client {\n    secret = "' + "x"*64 + '"\n  }\n}\n'
         m = psk.SWAN_SECRET.search(config)
