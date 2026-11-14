@@ -608,3 +608,92 @@ VPN provision, server security and actual client acceptance are NOT.
 
 **Current PSK is a generated private random secret**, NOT the literal
 user-proposed short label. Do not put fixed/predictable PSK into Git.
+
+
+## Current focus: Phase 1 mobile IPsec client testing & stable production gate (2026-11-14)
+
+**Verified from latest operator console:** strongSwan 5.9.13 installed,
+`strongswan.service` running but disabled from boot at last successful
+trial; `swanctl --list-conns` displays `mobile-l2tp-psk` with an IKEv1
+transport child; UDP 500/4500 bound by charon, UDP 1701 by xl2tpd;
+`xl2tpd`/`l2tp-direct6.timer` active. The **global PSK** is protected
+root-only and the connection's secret was loaded without being shown.
+No client-side protected authentication or Internet test observed yet.
+
+**Already source-implemented:** `tools/l2tp-ipsec-psk.py` candidate
+renderer, mobile IKEv2-EAP profile formats, unit tests, and a
+read-only phase-one audit. See:
+[Phase 1 client and stability gates](docs/PHASE-1-CLIENT-STABILITY.md).
+
+### P0: Phase 1 — connection validation before production
+
+- [x] Source: generate an isolated IKEv1 L2TP/IPsec PSK config for
+  the existing Linux host; PSK is a strong generated secret, not a
+  public project name or embedded username password.
+- [x] Host: install strongSwan 5.9.13 with swanctl and successfully
+  load `mobile-l2tp-psk`. Keep existing L2TP/IPv6 services active.
+- [x] Source: add a read-only audit with negative tests and no PSK
+  output. **Not yet executed on Polaris**.
+- [ ] Prove real **iPhone** IKEv1 SA, protected transport CHILD_SA,
+  simultaneous PPP session and IPv4 HTTPS egress from Polaris.
+- [ ] Measure native iPhone L2TP IPv6 support (do not assume a
+  dual-stack pass) and document IPv4-only behavior if observed.
+- [ ] Verify selected existing direct and GRE L2TP paths, active
+  forwards and remote administration remain unaffected.
+- [ ] Reconnect and test multi-client NAT-T concurrency, rejected
+  wrong PSK/PPP password, route/MTU and reconnection after roaming.
+- [ ] Validate startup order/restart/reboot/recovery/rollback, then
+  enable strongSwan persistence **only** after approval.
+- [ ] Determine the independent protocol path for **Android**:
+  vendor L2TP capability or dedicated IKEv2 backend (EAP/PSK
+  depending tested Android client). Do not label current Android
+  EAP profile as an active VPN.
+- [ ] Test actual modem/router firmware and supported transport
+  before generating configuration; no universal profile assumption.
+- [ ] For truly `ipsec-required` accounts, implement isolated
+  protected listener and prove rejection over plaintext L2TP.
+- [ ] Produce concise pass/fail evidence for each device, protocol,
+  IPv4+IPv6 route, service and rollback criterion.
+
+### P1: Phase 2 — account and per-device profile generator (design only)
+
+- [ ] Define CLI accepting client display name and platform
+  `iphone | android | modem | router | all`, with automatic
+  protocol capability validation and fail-closed unknown devices.
+- [ ] Create actual PPP or IKEv2 user only after allocating a
+  collision-free address and validating server authentication scope.
+- [ ] Create compatible per-device files with no plaintext global
+  secrets by default; require optional secure transfer for
+  applicable PSK/PPP credentials.
+- [ ] Unit/integration tests for reruns, concurrent requests,
+  credential rotation, user disable, rollback and route persistence.
+
+### P2: Phase 3 — HTTPS self-service + one-time onboarding (design only)
+
+- [ ] Build a non-root dashboard with own-user login/session,
+  own-device compatibility view, account status, profile download
+  and revocation; no cross-account disclosure.
+- [ ] Operator creates a random one-use invitation URL with
+  token hash at rest, bounded expiry, scoped account rights,
+  throttling and atomic consume during username/password signup.
+- [ ] Create real account transactionally from chosen credentials
+  with audited privileged helper and no arbitrary host command input.
+- [ ] Redirect successfully enrolled user to authenticated
+  personal dashboard; provide individually revocable subscription
+  URL separate from the **consumed one-time invitation**.
+- [ ] Security review: TLS, CSRF, cookies, rate limits, abuse,
+  token leakage, profile caching, per-user authorization, audit
+  redaction, backups and disaster recovery.
+- [ ] Performance/load tests suitable for a small VPN VPS.
+
+Full design contract:
+[Future self-service and subscription architecture](docs/FUTURE-SELF-SERVICE.md).
+
+**Release statement:** completion of source tasks is not proof of
+live protected mobile access or a stable service. The Phase 2/3
+features are intentional future work, not represented as deployed.
+
+**Branch consolidation as observed before this work:** `main` and
+`feature/configurable-l2tp-network` are already ancestors of
+`development` (no commits missing); new Phase-1 source is proposed
+through a dedicated PR into development without rewriting main.
