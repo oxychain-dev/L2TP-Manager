@@ -741,3 +741,29 @@ PLAN.md یک تاریخچهٔ مفصل با بندهای قبلاً NOT VERIFIED
 **شرط ایمنی مشترک:** نه اطلاعات ورود/PSK/کلید XFRM در Issue منتشر شود و نه Start/Stop/Reboot/Firewall/RouterOS بدون Backup، Scope و آزمون Recovery انجام شود.
 
 ---
+
+## انتشار کنترل‌شده پس از فعال‌شدن GitHub Issues
+
+این فایل حاوی **۲۹ Draft مستقل** است و تا فعال‌شدن Issues هیچ Issue واقعی نمی‌سازد. مالک مخزن باید در Settings → General → Features گزینهٔ Issues را فعال کند.
+
+پس از فعال‌سازی، می‌توان از `tools/publish-issue-backlog.py` استفاده کرد. این ابزار **پیش‌فرض dry-run** دارد و `--apply` نیازمند GitHub CLI (`gh`) احراز هویت‌شده و تعیین صریح مخزن است. نیازی به اجرای آن با root یا روی VPS نیست.
+
+~~~bash
+(
+  set -eu
+  repo=$(git rev-parse --show-toplevel)
+  python3 "$repo/tools/publish-issue-backlog.py"
+)
+~~~
+
+برای ایجاد واقعی فقط **بعد از بازبینی عنوان و متن هر ۲۹ مورد و فعال شدن Issues**:
+
+~~~bash
+(
+  set -eu
+  repo=$(git rev-parse --show-toplevel)
+  python3 "$repo/tools/publish-issue-backlog.py" --apply --repo oxychain-dev/L2TP-Manager
+)
+~~~
+
+ابزار موارد موجود را با شناسهٔ `TASK-xxx` یا عنوان تطبیق می‌دهد و از ایجاد تکراری جلوگیری می‌کند. اگر خطا رخ دهد، متوقف می‌شود؛ پیش از اجرای مجدد وضعیت GitHub باید بررسی شود. هر Issue با Tracking ID خودش ایجاد می‌شود و سپس می‌توان بر اساس وابستگی‌ها اولویت‌بندی کرد.
