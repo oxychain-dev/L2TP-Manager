@@ -105,7 +105,7 @@ IPv4 is printed only if the IP appears in the configured strongSwan
 snippet **and** is assigned to this host; otherwise it is marked
 `unverified`.
 
-## Global rotation is not a normal user edit
+## Global PSK change/synchronization is not a normal user edit
 
 A new shared PSK affects **all** L2TP/IPsec devices holding the old
 key, regardless of per-user offer metadata. Rotation is not the same
@@ -113,12 +113,11 @@ as editing an individual PPP password or removing a profile flag.
 
 The guarded global rotation:
 - Requires private interactive terminal and exact
-  `ROTATE GLOBAL PSK` confirmation.
+  `CHANGE GLOBAL PSK` confirmation.
 - Rejects nonzero or unreadable kernel IPsec SA counts and inactive
   strongSwan; expects root-owned secret and known owned config files.
-- Requires the global-secret file and known active strongSwan snippet
-  to contain the **same previously generated** PSK.
-- Accepts a manually entered 8–64-character printable ASCII secret without spaces, quotes or backslashes; Enter generates a random 16-character secret. It also accepts the earlier 18- or 64-character PSK as an input for migration and can reconcile a mismatch between the global and active files.
+- Inspects the global and active PSK separately; permits repairing an already-mismatched pair, but refuses unknown/extra strongSwan connections or active IPsec sessions.
+- Accepts a manually entered **8–64-character** printable ASCII secret (letters, digits and simple punctuation; no spaces, quotes or backslashes). Pressing Enter generates a random **16-character** secret. Existing manually changed 18-character or original 64-character keys are accepted as migration inputs, including if they differ between global and active files.
 - Updates the
   global file and owned active/candidate snippet(s), then requests
   credential reload. On failure tries to restore all changed files
@@ -175,3 +174,39 @@ References:
 - https://docs.strongswan.org/docs/5.9/swanctl/swanctlConf.html
 - https://docs.strongswan.org/docs/latest/swanctl/swanctlLoadCreds.html
 - https://docs.strongswan.org/docs/latest/support/faq.html
+
+
+### Repair the previously observed Polaris mismatch
+
+The operator observed a root-only global PSK of **18 characters** while
+the active strongSwan L2TP snippet contains a **different** secret.
+The old 64-character-only validator rejects this existing setup; it
+does not mean the IKEv1 connection failed or that a user connected.
+
+On a verified, isolated new release checkout:
+
+~~~sh
+sudo python3 tools/psk-client-manager.py global-status
+sudo python3 tools/psk-client-manager.py global-rotate
+sudo python3 tools/psk-client-manager.py global-status
+~~~
+
+Or launch the existing interactive L2TP Manager and choose
+**15 → 2**. Type the exact confirmation phrase
+`CHANGE GLOBAL PSK`, then:
+- press **Enter** for a randomly generated 16-character PSK, or
+- enter your own 8–64-character printable ASCII secret twice;
+  no need to memorize or paste a multi-line Python program.
+
+The manager checks for a zero active IKE/XFRM SA count, backs up
+each owned file (0600 in a 0700 directory), writes the chosen PSK to
+the global and owned active/candidate snippets, then reloads IKE
+credentials with `swanctl --load-creds --clear --noprompt`.
+Any failure attempts restoration of old files and credentials.
+Do **not** claim that the new secret works on iPhone until one actual
+IKE/CHILD SA and PPP/IPv4 end-to-end test passes.
+
+**Critical:** This affects ALL existing clients using the shared PSK.
+Changing a user's "PSK offered" setting does not change the key or
+revoke old users. Do not disclose the new secret in GitHub, chats,
+terminal logs or URLs.
