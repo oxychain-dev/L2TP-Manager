@@ -21,7 +21,7 @@ plain_l2tp_create() {
     validate_password "$password" || { error "Invalid PPP password"; return 1; }
     read -r -p 'Type CREATE PLAIN ACCOUNT to confirm: ' chosen || return 1
     [[ "$chosen" == 'CREATE PLAIN ACCOUNT' ]] || { info "Cancelled"; return 0; }
-    if ! add_user_to_system "$username" "$password" "$(get_next_available_ip)"; then
+    if ! add_user_to_system "$username" "$password" ""; then
         error "Account unchanged; inspect allocator error"
         return 1
     fi
