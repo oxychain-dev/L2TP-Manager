@@ -14,8 +14,14 @@ per-user IPsec-only claims, full cross-platform provisioning.
 - UDP 500/4500 have charon listeners; UDP 1701 remains owned by xl2tpd.
 - The last observed `strongswan.service` is **running but disabled**;
   `xl2tpd` and `l2tp-direct6.timer` are active.
-- No observed successful phone IKE_SA, CHILD_SA, PPP session for
-  `myiphone` or HTTPS public-egress test; **not production stable**.
+- **New evidence (2026-11-14):** a real iPhone session established
+  `mobile-l2tp-psk` IKEv1 and `l2tp-transport` ESP CHILD_SA,
+  with increasing protected traffic counters; SAD count 2 and simultaneous
+  `ppp0`, `ppp1`, `ppp2` were observed. The `ppp2` peer matches the
+  earlier IPv4 allocated to `myiphone`. **Still NOT VERIFIED:**
+  authenticated PPP username corroboration, phone HTTPS public IPv4 egress,
+  iPhone IPv6, reconnect/roaming and persistence after a new reboot.
+  **Do not declare production stability from an established SA alone.**
 - Existing PPP user `myiphone` was listed with an assigned IPv4 peer;
   this is distinct from the offline IKEv2 EAP-only user `myphone`.
 - No proof that plaintext L2TP is blocked for selected accounts;
@@ -146,3 +152,13 @@ auth/traffic is still unverified.
 - User-chosen names, generated device profiles for modem/router/all,
   self-service provisioning, dashboard, invitation links and
   subscription URLs. See [future portal architecture](FUTURE-SELF-SERVICE.md).
+
+
+## New deployment note: verified SA vs outstanding production tests
+
+For up-to-date Persian operating instructions see [GUIDE](../GUIDE.md).
+For open acceptance tasks see [ISSUE-BACKLOG](../ISSUE-BACKLOG.md).
+GitHub Issues are disabled (HTTP 410) as of this review; draft entries are
+not actual GitHub issues. Current acceptance is PARTIAL: a live protected
+IKE/ESP session was observed, but public egress, PPP user mapping, and
+full reboot/non-regression remain open.
