@@ -32,3 +32,12 @@ VPN_LOCAL_IP=10.44.0.1
 VPN_IP_END=10.45.0.1
 if validate_vpn_network_settings >/dev/null 2>&1; then exit 1; fi
 echo "network configuration tests passed"
+
+# Phase-1 PPP password hardening tests (no passwords printed).
+validate_password 'StrongPass1234!'
+if validate_password 'short'; then exit 1; fi
+if validate_password 'with space pass 123'; then exit 1; fi
+if validate_password 'slash/Password1234'; then exit 1; fi
+generated=$(generate_random_password 20)
+[[ ${#generated} -eq 20 ]]
+validate_password "$generated"
