@@ -46,20 +46,20 @@ class MultiWanTests(unittest.TestCase):
                               "ca1name * OtherPass1234 172.16.101.11\n")
 
     def test_legacy_chap_omissions_and_negative_authorizations_fail_closed(self):
-        no_addresses = mod.parse_records("legacy peer Password12345\\n")
+        no_addresses = mod.parse_records("legacy peer Password12345\n")
         self.assertTrue(no_addresses[3])
         with self.assertRaises(mod.Invalid):
             mod.allocate(pool(), no_addresses, set(), [])
-        excluded = mod.parse_records("legacy peer Password12345 !172.16.101.15\\n")
+        excluded = mod.parse_records("legacy peer Password12345 !172.16.101.15\n")
         self.assertTrue(excluded[3])
         with self.assertRaises(mod.Invalid):
             mod.allocate(pool(), excluded, set(), [])
 
     def test_duplicate_username_is_rejected_even_for_server_specific_ppp_entry(self):
-        old = "ca2name other-ppp-server LegacyPassword123 172.16.101.12\\n"
+        old = "ca2name other-ppp-server LegacyPassword123 172.16.101.12\n"
         self.assertTrue(mod.existing_ppp_identity(old, "ca2name"))
         self.assertFalse(mod.existing_ppp_identity(old, "different"))
-        disabled = "# l2tp-manager-disabled ca2name * Password12345 172.16.101.12\\n"
+        disabled = "# l2tp-manager-disabled ca2name * Password12345 172.16.101.12\n"
         self.assertTrue(mod.existing_ppp_identity(disabled, "ca2name"))
 
     def test_pool_boundary_local_overlap_and_reserved_route(self):
