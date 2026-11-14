@@ -99,6 +99,12 @@ PSK metadata; it uses the same locked PPP account writer.
 - Configured assigned-IP mappings are stable across restarts because
   they are persisted in `chap-secrets`; the session-identity hook
   runtime state in `/run` is intentionally ephemeral.
+- For correctness if `pppN` is rapidly reused, delayed `ip-down.d`
+  events do **not** erase the most recent identity record. Only a
+  matching **live kernel interface index** and peer IPv4 make a hook
+  record trustworthy; obsolete records in `/run` are ignored and
+  disappear at reboot or are overwritten by a later successful UP.
+  If the hook is not installed, usernames are marked as inferred.
 
 **Concurrency guarantee limitation:** external scripts editing
 `chap-secrets` without observing the new lock can still race.
