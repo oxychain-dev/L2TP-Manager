@@ -118,7 +118,8 @@ The guarded global rotation:
   strongSwan; expects root-owned secret and known owned config files.
 - Requires the global-secret file and known active strongSwan snippet
   to contain the **same previously generated** PSK.
-- Generates a fresh 64-character high-entropy secret, updates the
+- Accepts a manually entered 8–64-character printable ASCII secret without spaces, quotes or backslashes; Enter generates a random 16-character secret. It also accepts the earlier 18- or 64-character PSK as an input for migration and can reconcile a mismatch between the global and active files.
+- Updates the
   global file and owned active/candidate snippet(s), then requests
   credential reload. On failure tries to restore all changed files
   and previously loaded credentials.
