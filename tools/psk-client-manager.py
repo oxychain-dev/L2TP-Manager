@@ -94,12 +94,16 @@ def load_flags(path=CONFIG):
     return data
 
 
-def valid_psk(value, minimum=8, maximum=128):
-    # Quoted in strongSwan and ipsec.secrets: block controls, whitespace and
-    # delimiters/escapes that could change config parsing. Permit punctuation.
-    return (minimum <= len(value) <= maximum
-            and all(33 <= ord(ch) <= 126 and ch not in '"\\' for ch in value))
-
+def valid_psk(value, minimum=1, maximum=128, for_new=False):
+    # Read legacy printable ASCII PSKs for migration, even when not 64 chars.
+    # New values exclude whitespace, quotes and backslashes for safe quoting.
+    if not minimum <= len(value) <= maximum:
+        return False
+    if not all(32 <= ord(ch) <= 126 and ord(ch) != 34 for ch in value):
+        return False
+    if for_new and any(ch.isspace() or ord(ch) == 92 for ch in value):
+        return False
+    return True
 
 def load_psk(path=PSK):
     secure_file(path)
@@ -108,7 +112,7 @@ def load_psk(path=PSK):
     except (UnicodeError, OSError) as exc:
         raise Invalid("Unrecognized global PSK text encoding") from exc
     if not match or not valid_psk(match.group(1)):
-        raise Invalid("Invalid global PSK format: expected one quoted ASCII PSK (8-128 chars)")
+        raise Invalid("Invalid global PSK format: expected a quoted ASCII PSK; use Global PSK settings to repair")
     return match.group(1)
 
 
@@ -345,7 +349,7 @@ def rotate():
         else:
             alphabet = string.ascii_letters + string.digits
             proposed = "".join(secrets.choice(alphabet) for _ in range(16))
-        if not valid_psk(proposed, minimum=8, maximum=64):
+        if not valid_psk(proposed, minimum=8, maximum=64, for_new=True):
             raise Invalid("New PSK must be 8-64 printable ASCII characters; "
                           "no spaces, quotes, backslashes or control characters")
         if hmac.compare_digest(proposed, old):
