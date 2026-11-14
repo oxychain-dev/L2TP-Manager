@@ -74,7 +74,7 @@ fi
 # Main loop
 while true; do
     show_menu
-    echo -e "${YELLOW}✨ Enter your choice (0-14): ${NC}"
+    echo -e "${YELLOW}✨ Enter your choice (0-15): ${NC}"
     echo -ne "${GREEN}▶ ${NC}"
     read choice
 
@@ -117,7 +117,14 @@ while true; do
             press_enter
             ;;
         5)
-            delete_user
+            echo "WARNING: Existing delete-user code may restart xl2tpd,"
+            echo "disconnecting every active PPP client and changing forwards."
+            read -r -p "Type DELETE USERS to proceed: " answer
+            if [[ "$answer" == "DELETE USERS" ]]; then
+                delete_user
+            else
+                info "Deletion cancelled"
+            fi
             press_enter
             ;;
         6)
@@ -156,18 +163,30 @@ while true; do
             press_enter
             ;;
         13)
-            log "Stopping services..."
-            systemctl stop xl2tpd
-            systemctl stop l2tp-forwards
-            stop_forwards
-            log "Services stopped"
+            echo "WARNING: Stopping L2TP/forwards disconnects current VPN users."
+            read -r -p "Type STOP ALL SERVICES to confirm: " answer
+            if [[ "$answer" == "STOP ALL SERVICES" ]]; then
+                systemctl stop xl2tpd && systemctl stop l2tp-forwards
+                stop_forwards
+                log "Managed services stopped"
+            else
+                info "Stop cancelled"
+            fi
             press_enter
             ;;
         14)
-            log "Restarting services..."
-            systemctl restart xl2tpd
-            systemctl restart l2tp-forwards
-            log "Services restarted"
+            echo "WARNING: Restarting L2TP and forwards can disconnect active VPN users."
+            read -r -p "Type RESTART ALL SERVICES to confirm: " answer
+            if [[ "$answer" == "RESTART ALL SERVICES" ]]; then
+                systemctl restart xl2tpd && systemctl restart l2tp-forwards
+                log "Managed L2TP/forward services restart requested"
+            else
+                info "Restart cancelled"
+            fi
+            press_enter
+            ;;
+        15)
+            psk_global_settings
             press_enter
             ;;
         0)

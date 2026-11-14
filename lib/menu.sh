@@ -166,7 +166,8 @@ show_menu() {
     echo -e "${CYAN}⚙️  SERVICE CONTROL${NC}"
     echo -e "   ${GREEN}[12]${NC} ✅ Start All Services"
     echo -e "   ${GREEN}[13]${NC} ⏹️  Stop All Services"
-    echo -e "   ${GREEN}[14]${NC} 🔄 Restart All Services"
+    echo -e "   ${GREEN}[14]${NC} 🔄 Restart All Services (requires confirmation)"
+    echo -e "   ${GREEN}[15]${NC} 🔐 Global Shared PSK Settings"
     echo
     echo -e "   ${RED}[0]${NC}  🚪 Exit Program"
     echo

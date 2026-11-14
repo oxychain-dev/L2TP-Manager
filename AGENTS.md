@@ -286,3 +286,26 @@ end-to-end phone access. Source of truth for latest observed state:
 10. Stable means tests plus observed production behavior, persistence,
     reboot/reconnect, rollback, user isolation and no regressions.
     CI success alone does not confer this status.
+
+
+## Global PSK account workflow guardrails (2026-11-14)
+
+The operator clarified that their requested "IPsec user" means a PPP
+user to whom the already existing GLOBAL PSK is offered. Do not
+pretend a user flag creates an independent IKE key, enforces
+encrypted-only traffic or revokes a PSK already learned.
+
+List accounts without secrets by default. Copy-ready details for one
+user require an interactive private console and an explicit reveal
+confirmation. Account add/edit must not restart active L2TP sessions
+automatically or rewrite static IPs used in direct6/GRE/PBR.
+
+A global PSK rotation requires explicit confirmation, no active
+IPsec SAs, scoped rollback and coordinated changes on ALL clients.
+Never use a service restart to silence optional swanctl plugin
+warnings. Distinguish swanctl credentials reload from a disruptive
+strongSwan or xl2tpd restart.
+
+Do not claim Phase-1 defect-free or stable from source tests.
+Require real iPhone IKE/CHILD_SA, PPP and client egress validation.
+See [Phase-1 PSK runbook](docs/PHASE1-PSK-USERS.md).
