@@ -32,7 +32,7 @@ psk_global_settings() {
         printf '\n%s\n' '=== Global L2TP/IPsec PSK ==='
         psk_client_tool global-status || return 1
         printf '%s\n' '[1] Show global PSK on this trusted terminal (confirmation required)' \
-            '[2] Rotate shared PSK for ALL clients (high impact, no active SAs)' \
+            '[2] Change/synchronize shared PSK (Enter=random 16; no active IPsec sessions)' \
             '[3] Reload strongSwan credentials (no restart)' \
             '[4] Restart only strongSwan (disconnects IPsec users)' \
             '[5] Restart xl2tpd (disconnects current PPP users)' \
