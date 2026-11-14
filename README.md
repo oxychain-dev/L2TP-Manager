@@ -349,3 +349,11 @@ port-forward restart during new account creation.
 [Plain-L2TP concurrent multi-WAN guide, RouterOS VRF, 16-test matrix
 and rollback](docs/PLAIN-L2TP-MULTIWAN.md). This work has **NOT** been
 deployed on Polaris and does not change the optional iPhone PSK mode.
+
+
+### راهنمای فارسی مدیریت و وضعیت واقعی فاز اول
+
+- [GUIDE.md — راهنمای کامل فارسی استفاده از منوی کاربران، Plain Multi-WAN، PSK و سرویس‌ها](GUIDE.md)
+- [ISSUE-BACKLOG.md — ۲۹ پیش‌نویس Issue اولویت‌دار با معیار پذیرش](ISSUE-BACKLOG.md)
+
+**نکته:** GitHub Issues این مخزن در زمان ثبت این بخش غیرفعال است؛ تلاش ساخت Issue با HTTP 410 رد شد. فایل backlog یک فهرست آمادهٔ ثبت است، نه Issueهای ساخته‌شده. شواهد یک اتصال واقعی iPhone با IKEv1/ESP در نوامبر ۲۰۲۶ مشاهده شده، ولی اینترنت واقعی گوشی، نگاشت قطعی PPP Username و Reboot بعد از آن هنوز تأیید نشده‌اند.
