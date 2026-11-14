@@ -5,7 +5,6 @@ The output is a root-only strongSwan legacy secrets include, not a
 deployed IPsec endpoint. No PSK value is printed, logged or committed.
 """
 import argparse
-import hashlib
 import os
 from pathlib import Path
 import re
@@ -38,10 +37,10 @@ def audit(path):
         raise Invalid("Key file must be root-owned regular mode 0600")
     data = path.read_text(encoding="ascii")
     match = FORMAT.fullmatch(data)
-    if not match or not all(32 <= ord(x) <= 126 for x in match.group(1)):
+    if not match or not 8 <= len(match.group(1)) <= 128 or not all(32 <= ord(x) <= 126 for x in match.group(1)):
         raise Invalid("Unexpected global key file format")
     print("Global PSK file valid:", path, "(length:", len(match.group(1)), ")")
-    print("Fingerprint (not key):", hashlib.sha256(match.group(1).encode()).hexdigest()[:16])
+    print("PSK contents and fingerprint intentionally hidden")
     print("Not evidence of an active IPsec listener or secure user selection")
 
 
