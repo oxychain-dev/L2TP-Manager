@@ -27,7 +27,7 @@ command -v python3 >/dev/null 2>&1 || {
     echo "ERROR: Hook source not a regular file" >&2
     exit 1
 }
-python3 -m py_compile "$source_file"
+python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$source_file"
 
 for part in ip-up.d ip-down.d; do
     directory="/etc/ppp/$part"
