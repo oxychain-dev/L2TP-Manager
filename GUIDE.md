@@ -252,3 +252,8 @@
 **فقط طرح آینده، نه ویژگی آماده:** پروفایل سازگار خودکار برای `iphone|android|modem|router|all`، Backend واقعی IKEv2 برای Android جدید، محدودسازی `ipsec-required` به کاربران خاص، صفحهٔ HTML و Dashboard شخصی، دعوت یک‌بارمصرف برای ثبت‌نام و Subscription URL جداگانه/قابل ابطال برای هر کاربر.
 
 برای پیگیری کارهای باقیمانده از [Issues مخزن](https://github.com/oxychain-dev/L2TP-Manager/issues) استفاده کن؛ هر Issue باید با معیار پذیرش و خروجی قابل‌تأیید بسته شود، نه صرفاً Pass شدن CI.
+
+
+### تبدیل ۲۹ Task به Issue واقعی پس از فعال‌شدن GitHub Issues
+
+ابزار [publish-issue-backlog.py](tools/publish-issue-backlog.py) پیش‌فرض هیچ تغییری ایجاد نمی‌کند. پس از بازبینی Backlog و فعال‌کردن Issues توسط مالک، آن را ابتدا بدون `--apply` برای مشاهدهٔ عنوان‌ها اجرا کن. برای ثبت واقعی باید CLI `gh` احراز هویت شده باشد و `--apply --repo oxychain-dev/L2TP-Manager` را صریح وارد کنی؛ روی VPS با دسترسی root لازم نیست. ابزار شناسهٔ `TASK-xxx` را برای جلوگیری از Issueهای تکراری کنترل می‌کند. اگر خطا رخ دهد، پیش از تلاش مجدد وضعیت Issueهای GitHub را بررسی کن.
