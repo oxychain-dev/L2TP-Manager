@@ -35,7 +35,8 @@ add_user_manual() {
     
     # Password validation
     while true; do
-        read -p "Enter password (6-64 chars): " password
+        read -r -s -p "Enter password (12-64 safe characters): " password
+        echo
         
         if [[ -z "$password" ]]; then
             error "Password cannot be empty"
@@ -43,7 +44,7 @@ add_user_manual() {
         fi
         
         if ! validate_password "$password"; then
-            error "Password must be 6-64 characters long"
+            error "Password must be 12-64 allowed characters (letters, digits, @ . _ + = ! % : -)"
             continue
         fi
         
@@ -232,7 +233,7 @@ add_user_random() {
     done
     
     # Generate random password
-    password=$(generate_random_password 12)
+    password=$(generate_random_password 20) || return 1
     
     # Auto-assign next available static IP
     if ip_addr=$(get_next_available_ip); then
@@ -334,49 +335,31 @@ add_user_random() {
 }
 
 add_user_to_system() {
-    local username="$1"
-    local password="$2"
-    local ip_addr="$3"
-    
-    # Sanitize all inputs
-    username=$(sanitize_input "$username")
-    password=$(sanitize_input "$password")
-    
-    # Add user to chap-secrets with proper formatting
-    # Format: username * password ip_address
-    if ! printf "%-20s *       %-20s %s\n" "$username" "$password" "$ip_addr" >> "$CHAP_SECRETS"; then
-        error "Failed to add user to configuration file"
+    local username="$1" password="$2" ip_addr="$3"
+
+    validate_username "$username" || { error "Invalid username"; return 1; }
+    validate_password "$password" || { error "Invalid PPP password"; return 1; }
+    if username_exists "$username"; then
+        error "Username already exists."
         return 1
     fi
-    
-    # Verify the file is still readable
-    if ! [ -r "$CHAP_SECRETS" ]; then
-        error "Configuration file became unreadable"
+    [[ -f "$CHAP_SECRETS" && ! -L "$CHAP_SECRETS" ]] || {
+        error "Unsafe or missing PPP credential file"
+        return 1
+    }
+    umask 077
+    if ! printf '%-20s *       %-20s %s\n' "$username" "$password" "$ip_addr" >> "$CHAP_SECRETS"; then
+        error "Failed to append PPP user"
         return 1
     fi
-    
-    log "User '$username' added successfully"
-    
-    # Restart xl2tpd to reload config - simplified approach
-    echo -e "${YELLOW}🔄 Restarting L2TP service to apply changes...${NC}"
-    
-    # Use systemctl restart which handles stop/start automatically
-    if systemctl restart xl2tpd; then
-        sleep 2
-        if systemctl is-active xl2tpd >/dev/null 2>&1; then
-            echo -e "${GREEN}✅ L2TP service restarted successfully${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Service restart completed but status unclear. Check manually if needed.${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠️  User added successfully, but service restart failed.${NC}"
-        echo -e "${CYAN}💡 You can manually restart with: systemctl restart xl2tpd${NC}"
-        # Don't return error - user was successfully added
-    fi
+    PSK_NEW_USERNAME="$username"
+    log "PPP user created without restarting active xl2tpd sessions."
+    info "New credentials apply to a new PPP authentication; test the client."
     return 0
 }
 
 add_user() {
+    PSK_NEW_USERNAME=""
     echo -e "\n${CYAN}===============================================${NC}"
     echo -e "${CYAN}              Add L2TP User               ${NC}"
     echo -e "${BLUE}            Made by Mostech               ${NC}"
@@ -408,8 +391,11 @@ add_user() {
             error "Invalid option. Please try again."
             ;;
     esac
+    if [[ -n "$PSK_NEW_USERNAME" ]]; then
+        psk_choose_for_user "$PSK_NEW_USERNAME" ||
+            warning "PPP user exists, but PSK sharing preference was not updated."
+    fi
 }
-
 delete_user() {
     echo -e "\n${CYAN}=== Delete L2TP User ===${NC}"
     
@@ -623,141 +609,68 @@ delete_user() {
 }
 
 edit_user() {
-    echo -e "\n${CYAN}=== Edit L2TP User ===${NC}"
-    
-    # List current users
-    echo -e "\n${YELLOW}Current users:${NC}"
-    local users_list=$(grep -v "^#" "$CHAP_SECRETS" | grep -v "^$")
-    if [[ -z "$users_list" ]]; then
-        warning "No users found!"
-        return 1
-    fi
-    echo "$users_list" | nl
-    
-    read -p "Enter username to edit: " username
-    username=$(sanitize_input "$username")
-    
-    # Check if user exists
-    if ! grep -q "^$username\s" "$CHAP_SECRETS"; then
-        error "User '$username' not found!"
-        return 1
-    fi
-    
-    # Get current user info
-    local current_line=$(grep "^$username\s" "$CHAP_SECRETS")
-    local current_pass=$(echo "$current_line" | awk '{print $3}')
-    local current_ip=$(echo "$current_line" | awk '{print $4}')
-    
-    echo -e "\n${YELLOW}Current settings for '${GREEN}$username${NC}${YELLOW}':${NC}"
-    echo -e "   Password: ${GREEN}$current_pass${NC}"
-    echo -e "   IP:       ${GREEN}$current_ip${NC}"
+    local username current_line current_pass current_ip new_password answer temp line first matches backup
+    echo -e "\n=== Edit L2TP/PPP account and shared PSK preference ==="
+    psk_client_tool list || return 1
+    read -r -p "Username to edit: " username || return 1
+    validate_username "$username" || { error "Invalid username."; return 1; }
+    [[ -f "$CHAP_SECRETS" && ! -L "$CHAP_SECRETS" ]] || {
+        error "Unsafe PPP credentials file"; return 1
+    }
+    current_line=$(awk -v u="$username" '$1==u {print; n++} END {if (n!=1) exit 1}' "$CHAP_SECRETS") || {
+        error "PPP user not found or duplicate account."; return 1
+    }
+    current_pass=$(printf '%s\n' "$current_line" | awk '{print $3}')
+    current_ip=$(printf '%s\n' "$current_line" | awk '{print $4}')
+    echo "User: $username | PPP assigned IP: $current_ip | Password: [hidden]"
+    echo "Changing the static IP is disabled in Phase 1: direct6/GRE/forwards may depend on it."
+    read -r -s -p "New PPP password (empty keeps current): " new_password || return 1
     echo
-    
-    # Password input with validation
-    local new_password
-    while true; do
-        read -s -p "Enter new password (press enter to keep current): " new_password
-        echo
-        
-        if [[ -z "$new_password" ]]; then
-            new_password="$current_pass"
-            break
+    if [[ -n "$new_password" ]]; then
+        validate_password "$new_password" || {
+            error "Use 12-64 characters: letters, digits, @ . _ + = ! % : -"
+            return 1
+        }
+        read -r -p "Type CHANGE PPP PASSWORD to confirm: " answer || return 1
+        if [[ "$answer" != "CHANGE PPP PASSWORD" ]]; then
+            info "Password change cancelled"
+            return 1
         fi
-        
-        if ! validate_password "$new_password"; then
-            error "Password must be 6-64 characters long. Try again."
-            continue
-        fi
-        break
-    done
-    
-    # IP input with validation
-    local new_ip
-    while true; do
-        read -p "Enter new IP (press enter to keep current): " new_ip
-        new_ip=$(sanitize_input "$new_ip")
-        
-        if [[ -z "$new_ip" ]]; then
-            new_ip="$current_ip"
-            break
-        fi
-        
-        if ! validate_ip "$new_ip"; then
-            error "Invalid IP address format. Try again."
-            continue
-        fi
-        
-        # Check if IP is already assigned to another user
-        if [[ "$new_ip" != "$current_ip" ]] && ip_already_assigned "$new_ip"; then
-            error "IP '$new_ip' is already assigned to another user!"
-            continue
-        fi
-        break
-    done
-    
-    # Show changes summary
-    local changes_made=false
-    echo -e "\n${YELLOW}Changes to apply:${NC}"
-    if [[ "$new_password" != "$current_pass" ]]; then
-        echo -e "   Password: ${RED}$current_pass${NC} → ${GREEN}$new_password${NC}"
-        changes_made=true
-    else
-        echo -e "   Password: ${CYAN}(unchanged)${NC}"
-    fi
-    if [[ "$new_ip" != "$current_ip" ]]; then
-        echo -e "   IP:       ${RED}$current_ip${NC} → ${GREEN}$new_ip${NC}"
-        changes_made=true
-    else
-        echo -e "   IP:       ${CYAN}(unchanged)${NC}"
-    fi
-    
-    if [[ "$changes_made" != "true" ]]; then
-        info "No changes to apply."
-        return 0
-    fi
-    
-    # Confirm changes
-    read -p "Apply these changes? (y/N): " confirm
-    if [[ ! $confirm =~ ^[yY]$ ]]; then
-        info "Edit cancelled."
-        return 0
-    fi
-    
-    # Backup chap-secrets before modification
-    cp "$CHAP_SECRETS" "${CHAP_SECRETS}.backup.$(date +%Y%m%d%H%M%S)"
-    
-    # Update user
-    sed -i "/^$username\s/c\\$(printf '%-20s *       %-20s %s' "$username" "$new_password" "$new_ip")" "$CHAP_SECRETS"
-    
-    # If IP changed, warn about port forwards
-    if [[ "$new_ip" != "$current_ip" ]]; then
-        local has_forwards=false
-        if [[ -f "$FORWARDS_CONFIG" ]]; then
-            if grep -q "$current_ip" "$FORWARDS_CONFIG" 2>/dev/null || grep -q "^$username-" "$FORWARDS_CONFIG" 2>/dev/null; then
-                has_forwards=true
+        umask 077
+        backup="$CHAP_SECRETS.backup.$(date +%s%N)"
+        cp -p -- "$CHAP_SECRETS" "$backup" || return 1
+        temp=$(mktemp "$CHAP_SECRETS.edit.XXXXXXXX") || return 1
+        matches=0
+        if ! while IFS= read -r line || [[ -n "$line" ]]; do
+            read -r first _ <<< "$line"
+            if [[ "$first" == "$username" ]]; then
+                printf '%-20s *       %-20s %s\n' "$username" "$new_password" "$current_ip"
+                matches=$((matches + 1))
+            else
+                printf '%s\n' "$line"
             fi
+        done < "$CHAP_SECRETS" > "$temp"; then
+            rm -f -- "$temp"
+            error "Could not prepare replacement credentials"
+            return 1
         fi
-        
-        if [[ "$has_forwards" == "true" ]]; then
-            warning "User has port forwards pointing to old IP ($current_ip)."
-            echo -e "${YELLOW}Updating port forwards to new IP ($new_ip)...${NC}"
-            sed -i "s/:${current_ip}:/:${new_ip}:/g" "$FORWARDS_CONFIG"
-            info "Port forwards updated to new IP"
-            
-            # Restart port forwards to apply changes
-            systemctl restart l2tp-forwards >/dev/null 2>&1
+        # Count exact matches independently (the loop above is in a subshell).
+        matches=$(awk -v u="$username" '$1==u {n++} END {print n+0}' "$CHAP_SECRETS")
+        if [[ "$matches" != 1 ]]; then
+            rm -f -- "$temp"
+            error "Duplicate or missing account; unchanged"
+            return 1
         fi
+        chmod 600 -- "$temp"
+        if ! mv -f -- "$temp" "$CHAP_SECRETS"; then
+            rm -f -- "$temp"
+            error "Could not commit credentials; backup retained"
+            return 1
+        fi
+        info "PPP password stored. Existing sessions were NOT restarted."
+        info "An already-connected PPP user must reconnect to authenticate with the new password."
     fi
-    
-    log "User '$username' updated successfully"
-    
-    # Restart xl2tpd to reload config
-    echo -e "${YELLOW}🔄 Restarting L2TP service to apply changes...${NC}"
-    if systemctl restart xl2tpd; then
-        echo -e "${GREEN}✅ Service restarted successfully${NC}"
-    else
-        warning "Service restart failed. You can manually restart with: systemctl restart xl2tpd"
-    fi
+    psk_choose_for_user "$username"
 }
 
 list_users() {
@@ -788,13 +701,17 @@ list_users() {
         # Skip comments and empty lines
         is_comment_or_empty "$line" && continue
         
-        ((user_count++))
+        ((user_count+=1))
         username=$(echo "$line" | awk '{print $1}')
         ip_addr=$(echo "$line" | awk '{print $4}')
         
         echo -e "${CYAN}[$user_count] User: ${GREEN}$username${NC}"
         echo -e "    Password: ${YELLOW}[hidden]${NC}"
         echo -e "    Internal IP: ${GREEN}$ip_addr${NC}"
+        local status
+        status=$(psk_client_tool status --username "$username" 2>/dev/null) ||
+            status="PSK distribution status unavailable"
+        echo "    $status"
         
         # Find related port forwards
         local forwards_found=false
@@ -828,12 +745,20 @@ list_users() {
     if [[ -f "$FORWARDS_CONFIG" ]]; then
         while IFS=':' read -r name ext_port int_ip int_port desc; do
             is_comment_or_empty "$name" && continue
-            ((total_forwards++))
+            ((total_forwards+=1))
         done < "$FORWARDS_CONFIG"
     fi
     
     echo -e "${YELLOW}Total Port Forwards: ${GREEN}$total_forwards${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    local chosen
+    echo "For copy-ready details (including PPP password and global PSK),"
+    echo "only reveal one offered user on a trusted local terminal."
+    read -r -p "Username to reveal, or Enter to skip: " chosen || return 0
+    if [[ -n "$chosen" ]]; then
+        psk_client_tool show --username "$chosen" ||
+            warning "Reveal failed, cancelled or PSK not offered."
+    fi
 }
 
 show_ip_assignments() {
