@@ -233,3 +233,56 @@ separate IPv4/IPv6 VIP pools and XFRM-aware forwarding. iOS with IPv6
 pool requires IPv6 default traffic selector ::/0. The ingress WAN
 on-link /64 is not proof of delegated routing to clients. See
 `docs/direct-dualstack.md`.
+
+
+## Phase-one operational priority and future onboarding contract (2026-11-14)
+
+These instructions supplement, not replace, the networking/privilege
+contract above. The operator's immediate goal is reliable selective
+L2TP/IPsec access on Polaris **without affecting existing plaintext
+L2TP users or selected GRE/WARP paths**. Later goals are multi-device
+client/profile creation, HTTPS dashboard and one-time invitation URLs.
+
+**Phase-one authority:** the user has supplied console evidence from
+Polaris, not an authorized remote shell. Source PRs cannot assert
+actual server state. Observed strongSwan connection load is a
+configuration check, **not** proof of completed IKE_SA/CHILD_SA or
+end-to-end phone access. Source of truth for latest observed state:
+`docs/PHASE-1-CLIENT-STABILITY.md`.
+
+1. Build and test the actual selected iPhone L2TP/IPsec connection
+   first. Require successful kernel IPsec SA + protocol-scoped
+   CHILD_SA, matching PPP identity, traffic from the client and
+   non-regression of existing clients. Do not enable daemon at boot
+   until acceptance/recovery gates pass.
+2. Do not claim shared PSK enforces per-user IPsec on a shared UDP
+   1701 listener. For protected-only users, use isolated protected
+   listener/auth admission and prove plaintext downgrade rejection.
+3. Do not imply Android strongSwan app accepts legacy IKEv1/L2TP
+   profiles. It supports IKEv2; an EAP/IKEv2 service must be separately
+   deployed/tested. A client-select-all action selects multiple
+   supported artifacts, not one universal config.
+4. Every diagnostic uses read-only discovery and redacts PSK,
+   passwords, XFRM keys, auth tokens and private certificates.
+   An on-host trusted operator may view a secret for local transfer,
+   but never paste it into chat, Git, URLs, logs or bulk dashboards.
+5. Existing root-only `global-psk.secrets` is one machine-level
+   secret. It is distinct from PPP passwords and IKEv2 EAP registry;
+   new clients do not inherit EAP records as PPP users.
+6. Live source and future portal remain separate: prefer a narrow
+   privileged provisioning helper, no root-running web service, no
+   direct reads of password DB, no background secret exposures.
+7. An enrollment **invitation** is single use (atomic consume,
+   expiry, hash-at-rest); a **subscription** is a separate, scoped,
+   revocable read token. No token grants unsupervised root actions.
+8. The multi-device CLI/dashboard/one-time URL are **future design
+   only**, unless separate tests and verified deployment evidence
+   explicitly establish completion. Track milestones in
+   `docs/FUTURE-SELF-SERVICE.md` and `PLAN.md`.
+9. Git branch ancestry must be compared before a merge: ancestor
+   branches already included in development do not require a
+   fabricated or empty merge. Never force-merge or rewrite the main
+   production branch to satisfy a request for development integration.
+10. Stable means tests plus observed production behavior, persistence,
+    reboot/reconnect, rollback, user isolation and no regressions.
+    CI success alone does not confer this status.
