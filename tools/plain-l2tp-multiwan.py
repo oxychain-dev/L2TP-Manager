@@ -108,7 +108,7 @@ def optional_reserved(path=RESERVED, forwards=FORWARDS, routes=ROUTES):
             continue
         # Ancillary config must not be writable by other users.
         st = f.lstat()
-        if not stat.S_ISREG(st.st_mode) or st.st_mode & 0o022:
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o022:
             raise Invalid("Unsafe reference file: " + str(f))
         for line in f.read_text("utf-8").splitlines():
             if line.lstrip().startswith("#") or not line.strip():
@@ -178,8 +178,7 @@ def pool_config(args):
         raise Invalid("Invalid network/pool address") from exc
     if (network.prefixlen < 8 or network.prefixlen > 30 or
             int(start) > int(end) or start not in network or end not in network or
-            local not in network or local in (start, end) and start == end or
-            start == network.network_address or
+            local not in network or start == network.network_address or
             end == network.broadcast_address or
             int(end) - int(start) > 4095):
         raise Invalid("Invalid or unsafe PPP allocation pool")
@@ -247,7 +246,7 @@ def atomic_update(path, original, updated):
             os.unlink(tmp)
 
 
-def update_account(args):
+def update_account(args, password_override=None):
     with locked():
         private_chap()
         old = CHAP.read_text("utf-8")
@@ -260,8 +259,8 @@ def update_account(args):
         if args.action == "add":
             if args.username in active or args.username in disabled:
                 raise Invalid("PPP username already exists (including disabled account)")
-            if not sys.stdin.isatty() and args.password_stdin:
-                password = sys.stdin.readline().removesuffix("\n")
+            if password_override is not None:
+                password = password_override
             elif args.password_stdin:
                 password = sys.stdin.readline().removesuffix("\n")
             else:
