@@ -241,6 +241,9 @@ def rotate():
         service = subprocess.run(["systemctl", "is-active", "--quiet", "strongswan.service"], check=False)
         if service.returncode:
             raise Invalid("strongSwan is not active; no live rotation permitted")
+        snippets = sorted(ACTIVE.parent.glob("*.conf"))
+        if snippets != [ACTIVE]:
+            raise Invalid("Unknown additional swanctl snippets: rotation requires a dedicated audit")
         paths = [PSK, ACTIVE]
         if secure_file(CANDIDATE, required=False):
             paths.append(CANDIDATE)
