@@ -123,6 +123,26 @@ class MultiWanTests(unittest.TestCase):
                 self.assertNotIn("ca2name", chap.read_text())
                 self.assertIn("ca1name", chap.read_text())
 
+    def test_project_managed_direct6_gre_addresses_reserved(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            direct6 = Path(directory) / "direct6.json"
+            egress = Path(directory) / "ipv4-egress.json"
+            direct6.write_text(json.dumps({
+                "clients": [{"peer_ipv4": "172.16.101.10", "client_ipv6": "fd00::/64"}]
+            }))
+            egress.write_text(json.dumps({"client_ipv4": "172.16.101.11"}))
+            with mock.patch.object(mod, "reference_file_safe", return_value=True):
+                reserved = mod.structured_reserved(direct6, egress)
+            self.assertEqual(reserved, {
+                ipaddress.IPv4Address("172.16.101.10"),
+                ipaddress.IPv4Address("172.16.101.11")
+            })
+            egress.write_text("not JSON")
+            with mock.patch.object(mod, "reference_file_safe", return_value=True):
+                with self.assertRaises(mod.Invalid):
+                    mod.structured_reserved(direct6, egress)
+
     def test_existing_forward_ip_reservation_and_no_secret_printing(self):
         with tempfile.TemporaryDirectory() as directory:
             forwards = Path(directory) / "forward.txt"
