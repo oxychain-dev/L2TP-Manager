@@ -362,7 +362,13 @@ def observe_sessions():
         interface = entry["ifname"]
         remote = entry["remote"]
         record = state_record(interface)
-        if record and record.get("remote") == remote and USER.fullmatch(record.get("username", "")):
+        ifindex = None
+        try:
+            ifindex = int((Path("/sys/class/net") / interface / "ifindex").read_text("ascii").strip())
+        except (OSError, ValueError):
+            pass
+        if (record and ifindex is not None and record.get("ifindex") == ifindex and
+                record.get("remote") == remote and USER.fullmatch(record.get("username", ""))):
             username = record["username"]
             source = "pppd hook"
             uptime = max(0, round(time.time() - float(record.get("since", time.time()))))
