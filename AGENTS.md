@@ -339,3 +339,10 @@ See [Phase-1 PSK runbook](docs/PHASE1-PSK-USERS.md).
   as a separate on-device integration test.
 - The 16 real-device tests in `docs/PLAIN-L2TP-MULTIWAN.md` remain
   NOT TESTED until observed; passing CI means only source tests.
+
+
+## Latest iPhone field evidence and issue tracking boundary
+
+Observed on Polaris: real IKEv1 ESTABLISHED + ESP CHILD_SA INSTALLED + two-way counters and a simultaneous PPP peer allocated to the prior iPhone account. Do not repeat the earlier claim that **no** iPhone IPsec session was ever established. Do not claim verified authenticated PPP identity, public egress, reconnect or production stability without those distinct tests.
+
+GitHub Issues are disabled for this repository and creation returns HTTP 410. [ISSUE-BACKLOG.md](ISSUE-BACKLOG.md) contains issue drafts, not actual GitHub Issues; enable Issues in repository settings before publishing. Continue using `development` only; do not create unrelated branches to work around issue settings.
