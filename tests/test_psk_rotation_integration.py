@@ -61,7 +61,6 @@ class RotationIntegration(unittest.TestCase):
                 mock.patch.object(manager, "atomic_write", side_effect=fake_atomic_write),
                 mock.patch.object(manager.getpass, "getpass", side_effect=[new_key, new_key]),
                 mock.patch.object(manager.subprocess, "run", side_effect=fake_run),
-                mock.patch.object(manager.sys.stdout, "isatty", return_value=False),
                 contextlib.redirect_stdout(io.StringIO()) as output,
             ):
                 manager.rotate()
@@ -76,7 +75,7 @@ class RotationIntegration(unittest.TestCase):
         self.assertTrue(manager.valid_psk("Easy123!", minimum=8, maximum=64, for_new=True))
         self.assertTrue(manager.valid_psk("LongerLegacyPassword18"))
         self.assertFalse(manager.valid_psk("too short", minimum=8, maximum=64, for_new=True))
-        self.assertFalse(manager.valid_psk("unsafe\\12345", minimum=8, maximum=64, for_new=True))
+        self.assertFalse(manager.valid_psk(r"unsafe\\12345", minimum=8, maximum=64, for_new=True))
 
 
 if __name__ == "__main__":
