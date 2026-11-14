@@ -54,7 +54,7 @@ def read_users(path=CHAP):
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         try:
-            fields = shlex.split(line, comments=True, posix=True)
+            fields = shlex.split(line, comments=False, posix=True)
         except ValueError as exc:
             raise Invalid("Malformed PPP entry at line " + str(lineno)) from exc
         if len(fields) < 4:
@@ -196,12 +196,10 @@ def set_user(username, offered):
 def secret_reveal(username=None):
     users = read_users()
     flags = load_flags()
-    if username is not None:
-        if flags["users"].get(username) is not True:
-            raise Invalid("PSK details are not enabled for this user")
-        if username not in users:
-            raise Invalid("PPP username does not exist")
-    key = load_psk()
+    if username is not None and username not in users:
+        raise Invalid("PPP username does not exist")
+    offered = username is None or flags["users"].get(username) is True
+    key = load_psk() if offered else None
     ip = public_ip()
     tty_confirmation("Type REVEAL to display sensitive credentials locally: ", "REVEAL")
     if username is None:
@@ -209,13 +207,13 @@ def secret_reveal(username=None):
         print("WARNING: This is the same key for all PSK-enabled profiles.")
         return
     print("=== COPY LOCALLY ONLY; DO NOT PASTE INTO CHAT ===")
-    print("VPN type: L2TP/IPsec PSK (only on compatible devices)")
+    print("VPN type:", "L2TP/IPsec PSK (if supported by device)" if offered else "L2TP (plaintext)")
     print("Server IPv4:", ip)
     print("Username:", username)
     print("PPP password:", users[username]["password"])
-    print("Shared Secret (global PSK):", key)
+    print("Shared Secret (global PSK):", key if offered else "[not offered]")
     print("PPP assigned IPv4:", users[username]["ip"])
-    print("NOTE: 'Offered' is only a distribution label, NOT enforced IPsec.")
+    print("NOTE: The PSK flag is only a distribution preference; it is NOT IPsec enforcement.")
 
 
 def status():
