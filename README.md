@@ -275,12 +275,27 @@ IKEv1/transport-mode candidate using the **existing randomly
 generated global PSK**, without printing the PSK or modifying any
 daemon, xl2tpd, PPP, IPsec/XFRM or firewall rule.
 
-**Not deployed:** strongSwan, UDP 500/4500, IKEv1 transport SA and
-mobile L2TP/IPsec integration on Polaris still need real operator
-validation. The existing PSK is random and is NOT a literal brand
+**Updated operator evidence (2026-11-14):** strongSwan is installed,
+UDP 500/4500 listen, and `mobile-l2tp-psk` is shown in
+`swanctl --list-conns` on Polaris. **No authenticated client IKE SA,
+CHILD SA, PPP IPsec binding, phone egress test, or boot persistence
+is verified yet.** The existing PSK is random and is NOT a literal brand
 string. Do not claim IPsec-only user enforcement on the shared
 plaintext L2TP listener.
 
 **Modern Android:** Android 12+ frequently lacks a built-in L2TP
 client. IP-only **IKEv2/IPsec PSK** is a distinct Android profile and
 requires its own backend/pool configuration; don't mislabel it L2TP.
+
+
+### Phase 1 test/stability focus
+
+- [Phase 1 — real iPhone/Android/modem/router validation and rollback](docs/PHASE-1-CLIENT-STABILITY.md)
+- [Read-only audit utility](tools/ipsec-phase1-audit.py) — never exports PSK, passwords or XFRM keys.
+- [Future multi-device generator, dashboard, single-use invite and subscription design](docs/FUTURE-SELF-SERVICE.md) — **NOT implemented**.
+- [Agent rules](AGENTS.md) and [phase roadmap](PLAN.md).
+
+Before claiming IPsec client success, observe a true authenticated
+IKEv1/ESP transport session, the selected PPP peer, and traffic egress
+from the real device. A configured IPsec responder and an open UDP port
+alone do not verify an encrypted client session.

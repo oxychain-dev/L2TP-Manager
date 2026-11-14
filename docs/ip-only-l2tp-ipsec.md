@@ -8,9 +8,9 @@ IPsec pre-shared key. **No DNS name and no X.509 certificate
 required for this legacy L2TP/IPsec PSK profile.**
 
 Important: the machine PSK is **not** the individual PPP password.
-The existing root-only key created by §tools/global-psk.py§ is a
+The existing root-only key created by `tools/global-psk.py` is a
 random 64-character secret. It is **not** the literal word
-§oxychanin§; the latter is too short/predictable to use as a
+`oxychanin`; the latter is too short/predictable to use as a
 network-exposed shared secret. Do not change the PSK to a public
 project name or copy the key into this repository. Users enter the
 actual provisioned private PSK in their device.
@@ -19,8 +19,8 @@ actual provisioned private PSK in their device.
 
 | Client OS | IP-address L2TP/IPsec PSK |
 |---|---|
-| iPhone (supported iOS) | Native VPN type §L2TP§, supported by Apple |
-| Android 11 or some older/vendor versions | If §L2TP/IPsec PSK§ is available in system VPN settings |
+| iPhone (supported iOS) | Native VPN type `L2TP`, supported by Apple |
+| Android 11 or some older/vendor versions | If `L2TP/IPsec PSK` is available in system VPN settings |
 | Android 12/13/14+ commonly | Native L2TP support removed. **Do not call IKEv2 PSK L2TP.** Use separate IKEv2/IPsec PSK endpoint/profile instead |
 
 Official Apple: https://support.apple.com/en-ca/guide/security/sec802e8ab55/web
@@ -39,10 +39,10 @@ https://www.watchguard.com/help/docs/help-center/en-US/Content/en-US/Fireware/mv
 7. Connect. On Polaris verify the **IKEv1 SA plus CHILD_SA and PPP session**;
    a PPP session without matching IPsec must not be called protected.
 
-Do not use the staged IKEv2 EAP user §myphone§ as a PPP/L2TP
+Do not use the staged IKEv2 EAP user `myphone` as a PPP/L2TP
 account unless a separate PPP account with that exact identity
 was intentionally created. Current EAP registry does NOT populate
-§/etc/ppp/chap-secrets§.
+`/etc/ppp/chap-secrets`.
 
 ## Staging the server candidate: NO LIVE CHANGE
 
@@ -74,7 +74,7 @@ configuration directory:
 ~~~
 
 **DO NOT paste the generated candidate's content in support tickets or
-chat — it contains the PSK.** It is a strongSwan §swanctl§ candidate for
+chat — it contains the PSK.** It is a strongSwan `swanctl` candidate for
 IKEv1 **transport mode**, narrowed to UDP L2TP port 1701. The script
 does not install strongSwan, load the config or modify XFRM. The
 candidate must be validated on an installed compatible strongSwan
@@ -102,7 +102,7 @@ Before activation, inspect:
 
 The installed IPsec service must be separately configured to bind UDP
 500 and 4500, and firewall must allow IKE/NAT-T as required. Do not
-reload existing §xl2tpd§ or unrelated WARP/Docker rules. The
+reload existing `xl2tpd` or unrelated WARP/Docker rules. The
 initial dedicated strongSwan service and its candidate config require
 package checks, configuration validation, and a rollback plan before
 loading.
