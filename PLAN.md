@@ -697,3 +697,29 @@ features are intentional future work, not represented as deployed.
 `feature/configurable-l2tp-network` are already ancestors of
 `development` (no commits missing); new Phase-1 source is proposed
 through a dedicated PR into development without rewriting main.
+
+
+## Phase 1 — Shared PSK / PPP user-management clarification (2026-11-14)
+
+- [x] Add root-only per-user **PSK offered** distribution metadata;
+  it is neither access control nor per-user IKE authentication.
+- [x] Integrate menu add/edit/list with default secret redaction
+  and explicit single-account, terminal-only credential reveal.
+- [x] Add global PSK status, guarded rotation/reload and
+  separately confirmed strongSwan/xl2tpd restarts.
+- [x] Prevent routine xl2tpd restarts when adding/editing PPP users.
+  Protect new passwords with CSPRNG and restrict unsafe static-IP
+  edits while GRE/direct6/forward dependencies exist.
+- [x] Source syntax/unit tests; these do NOT certify production.
+- [ ] Execute real iPhone IKEv1+CHILD_SA+PPP+IPv4 Internet test.
+- [ ] Verify actual Polaris authentication updates and all existing
+  PPP/GRE/WARP/Docker/forward routes without regressions.
+- [ ] Test the global PSK rotation/rollback during a scheduled
+  maintenance window, not while production users are active.
+- [ ] Prove reconnect, multi-client NAT-T and reboot recovery.
+- [ ] If per-user IPsec-only is later required, build an isolated
+  endpoint and demonstrate plaintext login rejection.
+- [ ] Only after acceptance publish a stable Phase-1 release.
+
+Full runbook: [PSK account management](docs/PHASE1-PSK-USERS.md).
+Source code and CI green are not evidence of deployed, tested VPN.
