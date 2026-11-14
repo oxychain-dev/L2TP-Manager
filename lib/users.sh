@@ -131,7 +131,7 @@ add_user_manual() {
     esac
     
     # Add user to system
-    add_user_to_system "$username" "$password" "$ip_addr"
+    add_user_to_system "$username" "$password" "$ip_addr" || return 1
     
     # Handle port forwarding after user creation
     local winbox_port="" api_port="" custom_forward_info=""
@@ -196,7 +196,7 @@ add_user_manual() {
     echo -e "${CYAN}Server IP:   ${NC}$PUBLIC_IP"
     echo -e "${CYAN}L2TP Port:   ${NC}$L2TP_PORT"
     echo -e "${CYAN}Username:    ${NC}$username"
-    echo -e "${CYAN}Password:    ${NC}$password"
+    echo -e "${CYAN}Password:    ${NC}[hidden — use option 7 for confirmed reveal]"
     echo -e "${CYAN}Static IP:   ${NC}$ip_addr"
     
     # Show port forwarding details if created
@@ -268,7 +268,7 @@ add_user_random() {
     echo -e "\n${YELLOW}🎲 Generated Credentials:${NC}"
     echo -e "${CYAN}===============================================${NC}"
     echo -e "Username: ${GREEN}$username${NC}"
-    echo -e "Password: ${GREEN}$password${NC}"
+    echo -e "Password: ${GREEN}[hidden]${NC}"
     if [[ "$ip_addr" == "*" ]]; then
         echo -e "IP Mode:  ${YELLOW}Auto-assign (dynamic)${NC}"
     else
@@ -316,7 +316,7 @@ add_user_random() {
                 echo -e "${YELLOW}📋 Final Connection Details:${NC}"
                 echo -e "Server IP:     ${GREEN}$PUBLIC_IP${NC}"
                 echo -e "Username:      ${GREEN}$username${NC}"
-                echo -e "Password:      ${GREEN}$password${NC}"
+                echo -e "Password:      ${GREEN}[hidden — use option 7]${NC}"
                 echo -e "Static IP:     ${GREEN}$ip_addr${NC}"
                 echo -e "Winbox Access: ${GREEN}$PUBLIC_IP:$winbox_port${NC}"
                 echo -e "API Access:    ${GREEN}$PUBLIC_IP:$api_port${NC}"
@@ -407,7 +407,7 @@ delete_user() {
         return 1
     fi
     
-    echo "$users_list" | nl -w2 -s'. '
+    printf '%s\n' "$users_list" | awk '{print NR". "$1" (assigned "$4")"}'
     
     echo -e "\n${CYAN}Options:${NC}"
     echo "1. Enter username(s) directly: username1,username2"
