@@ -156,11 +156,15 @@ while true; do
             press_enter
             ;;
         13)
-            log "Stopping services..."
-            systemctl stop xl2tpd
-            systemctl stop l2tp-forwards
-            stop_forwards
-            log "Services stopped"
+            echo "WARNING: Stopping L2TP/forwards disconnects current VPN users."
+            read -r -p "Type STOP ALL SERVICES to confirm: " answer
+            if [[ "$answer" == "STOP ALL SERVICES" ]]; then
+                systemctl stop xl2tpd && systemctl stop l2tp-forwards
+                stop_forwards
+                log "Managed services stopped"
+            else
+                info "Stop cancelled"
+            fi
             press_enter
             ;;
         14)
