@@ -46,16 +46,13 @@ def record(event, interface, username, remote):
             if os.path.exists(name):
                 os.unlink(name)
     elif event == "down":
-        destination = STATE / (interface + ".json")
-        try:
-            st = destination.lstat()
-            if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o077:
-                return False
-            existing = json.loads(destination.read_text("ascii"))
-            if existing.get("username") == username and existing.get("remote") == remote:
-                destination.unlink()
-        except (FileNotFoundError, ValueError, OSError):
-            return False
+        # Do not delete the state file here. pppd can recycle pppN before a
+        # delayed DOWN hook runs. Even username+remote can repeat, and DOWN
+        # has no trustworthy per-session token. A late DOWN deleting a newer
+        # UP record would discard verified identity. Stale records are harmless:
+        # the session reader accepts them only for the matching live ifindex
+        # and remote peer. /run state is discarded on reboot.
+        return True
     else:
         return False
     return True
