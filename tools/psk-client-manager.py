@@ -193,6 +193,20 @@ def set_user(username, offered):
     print("Metadata only: this is NOT an IPsec/PPP access-control rule.")
 
 
+def prune():
+    """Remove only obsolete distribution flags for deleted PPP usernames."""
+    with locked():
+        users = read_users()
+        flags = load_flags()
+        stale = sorted(set(flags["users"]) - set(users))
+        if stale:
+            for name in stale:
+                del flags["users"][name]
+            atomic_write(CONFIG, json.dumps(flags, indent=2, sort_keys=True) + "\n")
+    print("Removed stale PSK distribution flags:", len(stale))
+    print("No VPN keys or actual access permissions were revoked.")
+
+
 def secret_reveal(username=None):
     users = read_users()
     flags = load_flags()
@@ -289,7 +303,7 @@ def rotate():
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("action", choices=["list", "status", "set", "show", "global-status",
-                                      "global-show", "global-rotate"])
+                                      "global-show", "global-rotate", "prune"])
     p.add_argument("--username")
     p.add_argument("--offered", choices=["yes", "no"])
     args = p.parse_args()
@@ -319,6 +333,8 @@ def main():
         secret_reveal()
     elif args.action == "global-rotate":
         rotate()
+    elif args.action == "prune":
+        prune()
 
 
 if __name__ == "__main__":
