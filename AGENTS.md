@@ -309,3 +309,33 @@ strongSwan or xl2tpd restart.
 Do not claim Phase-1 defect-free or stable from source tests.
 Require real iPhone IKE/CHILD_SA, PPP and client egress validation.
 See [Phase-1 PSK runbook](docs/PHASE1-PSK-USERS.md).
+
+
+## Plain L2TP dual-WAN scope and security (2026-11-14)
+
+- A separate mandatory workflow supports concurrent **unencrypted**
+  L2TPv2/PPP/CHAP accounts without PSK or MPPE. Do not migrate,
+  disable or alter the independent optional iPhone strongSwan/PSK
+  configuration to satisfy plain L2TP requirements.
+- Never imply CHAP provides payload confidentiality; plain L2TP
+  traffic is observable to suitable intermediaries.
+- Preserve CA1 static address and WAN1 /32 binding. Each additional
+  CA session gets a distinct username, static PPP address and
+  RouterOS WAN-specific underlay. Never identify a session by
+  source public WAN IP alone.
+- Only modify `chap-secrets` under the manager account lock,
+  with conflict checks from active PPP interfaces, configured
+  routes, forwards, direct6/GRE references, private backup
+  practices and no automatic daemon restart.
+- Do not open public Winbox or API management ports by default,
+  duplicate NAT rules, restart Docker/PPP, or modify RouterOS
+  from a VPS-side tool.
+- Show session identity as verified only when backed by a
+  pppd authentication hook with matching kernel interface
+  generation; otherwise label the username inference clearly.
+- Use RouterOS `connect-to=address@VRF` only after verifying the
+  actual WAN2 VRF/gateway and existing routing policies. Treat
+  fail-closed behavior, kill switch and per-flow tunnel affinity
+  as a separate on-device integration test.
+- The 16 real-device tests in `docs/PLAIN-L2TP-MULTIWAN.md` remain
+  NOT TESTED until observed; passing CI means only source tests.
