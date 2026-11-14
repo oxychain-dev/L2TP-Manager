@@ -13,7 +13,7 @@ import secrets
 import sys
 
 DEFAULT = Path("/etc/l2tp-manager/global-psk.secrets")
-FORMAT = re.compile(r'^: PSK "([^"\\r\\n]+)"\\n
+FORMAT = re.compile(r'^: PSK "([^"\r\n]+)"\n$')
 
 
 class Invalid(Exception):
