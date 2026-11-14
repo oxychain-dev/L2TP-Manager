@@ -222,7 +222,9 @@ def status():
     if secure_file(PSK, required=False):
         load_psk()
     print("Installed L2TP/IPsec snippet:", "present" if secure_file(ACTIVE, required=False) else "absent")
-    print("Users offered PSK details:", len(flags["users"]))
+    existing = read_users()
+    print("Existing PPP users offered PSK details:",
+          sum(1 for name in flags["users"] if name in existing))
     print("Policy: one global PSK, not user-specific and not IPsec-only enforcement.")
 
 
