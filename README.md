@@ -357,3 +357,6 @@ deployed on Polaris and does not change the optional iPhone PSK mode.
 - [ISSUE-BACKLOG.md — ۲۹ پیش‌نویس Issue اولویت‌دار با معیار پذیرش](ISSUE-BACKLOG.md)
 
 **نکته:** GitHub Issues این مخزن در زمان ثبت این بخش غیرفعال است؛ تلاش ساخت Issue با HTTP 410 رد شد. فایل backlog یک فهرست آمادهٔ ثبت است، نه Issueهای ساخته‌شده. شواهد یک اتصال واقعی iPhone با IKEv1/ESP در نوامبر ۲۰۲۶ مشاهده شده، ولی اینترنت واقعی گوشی، نگاشت قطعی PPP Username و Reboot بعد از آن هنوز تأیید نشده‌اند.
+
+
+For GitHub Issues migration when enabled, use [the reviewed backlog publisher](tools/publish-issue-backlog.py) in dry-run mode first. The repository currently rejects issue creation with HTTP 410, so [ISSUE-BACKLOG.md](ISSUE-BACKLOG.md) contains **29 drafts**, not real GitHub Issues.
