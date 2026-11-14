@@ -298,7 +298,7 @@ def rotate():
     expected IKEv1 connection; other live configurations cause refusal.
     """
     # One clear confirmation. The PSK itself is requested separately and hidden.
-    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+    if not sys.stdin.isatty():
         raise Invalid("Changing PSK requires an interactive private terminal")
     try:
         reply = input("Change the GLOBAL PSK for all VPN clients? Type yes to continue [no]: ")
