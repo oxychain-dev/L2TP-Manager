@@ -168,6 +168,7 @@ show_menu() {
     echo -e "   ${GREEN}[13]${NC} ⏹️  Stop All Services"
     echo -e "   ${GREEN}[14]${NC} 🔄 Restart All Services (requires confirmation)"
     echo -e "   ${GREEN}[15]${NC} 🔐 Global Shared PSK Settings"
+    echo -e "   ${GREEN}[16]${NC} 🔀 Plain L2TP Multi-WAN Accounts & Sessions (NO PSK)"
     echo
     echo -e "   ${RED}[0]${NC}  🚪 Exit Program"
     echo
