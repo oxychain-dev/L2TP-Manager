@@ -112,8 +112,7 @@ key, regardless of per-user offer metadata. Rotation is not the same
 as editing an individual PPP password or removing a profile flag.
 
 The guarded global rotation:
-- Requires private interactive terminal and exact
-  `CHANGE GLOBAL PSK` confirmation.
+- Requires an interactive terminal; answer `yes` or `y` to a clear confirmation before typing a new PSK.
 - Rejects nonzero or unreadable kernel IPsec SA counts and inactive
   strongSwan; expects root-owned secret and known owned config files.
 - Inspects the global and active PSK separately; permits repairing an already-mismatched pair, but refuses unknown/extra strongSwan connections or active IPsec sessions.
@@ -192,8 +191,7 @@ sudo python3 tools/psk-client-manager.py global-status
 ~~~
 
 Or launch the existing interactive L2TP Manager and choose
-**15 → 2**. Type the exact confirmation phrase
-`CHANGE GLOBAL PSK`, then:
+**15 → 2**. Type `yes` (or `y`) at the initial confirmation prompt, then:
 - press **Enter** for a randomly generated 16-character PSK, or
 - enter your own 8–64-character printable ASCII secret twice;
   no need to memorize or paste a multi-line Python program.
