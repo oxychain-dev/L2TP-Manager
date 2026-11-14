@@ -24,7 +24,9 @@ class RotationIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             global_file = root / "global-psk.secrets"
-            active = root / "50-mobile-l2tp-ipsec.conf"
+            active_directory = root / "swanctl-conf"
+            active_directory.mkdir()
+            active = active_directory / "50-mobile-l2tp-ipsec.conf"
             candidate = root / "candidate.conf"
             global_file.write_text(': PSK "' + before_global + '"\n')
             template = ('connections {\n  mobile-l2tp-psk {\n    version = 1\n  }\n}\n'
