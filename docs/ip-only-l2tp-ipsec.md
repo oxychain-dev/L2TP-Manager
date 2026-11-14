@@ -9,7 +9,7 @@ required for this legacy L2TP/IPsec PSK profile.**
 
 Important: the machine PSK is **not** the individual PPP password.
 The existing root-only key created by `tools/global-psk.py` is a
-random 64-character secret. It is **not** the literal word
+currently operator-configured shared secret; newly generated keys default to 16 random characters. It is **not** the literal word
 `oxychanin`; the latter is too short/predictable to use as a
 network-exposed shared secret. Do not change the PSK to a public
 project name or copy the key into this repository. Users enter the
