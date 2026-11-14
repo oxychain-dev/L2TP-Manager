@@ -67,12 +67,17 @@ def parse_records(content):
             raise Invalid("Malformed PPP secrets entry at line " + str(i+1)) from exc
         if len(fields) < 3:
             raise Invalid("Incomplete PPP secrets entry at line " + str(i+1))
+        if len(fields) == 3:
+            # No explicit address authorization: cannot prove pool isolation.
+            unknown.append(i+1)
         # Reserve addresses even for non-managed server/wildcard entries.
         for address in fields[3:]:
             if address == "*":
                 unknown.append(i+1)
                 continue
             if address.startswith("!"):
+                # Exclusion-only authorization cannot bound a positive pool.
+                unknown.append(i+1)
                 continue
             try:
                 claimed.add(ipaddress.IPv4Network(address, strict=False))
@@ -96,6 +101,20 @@ def parse_records(content):
                     raise Invalid("Managed account has invalid IPv4: " + name) from exc
                 dest[name] = (str(address), i)
     return active, disabled, claimed, unknown
+
+
+def existing_ppp_identity(content, username):
+    """Check every PPP credential stanza, not only wildcard-server entries."""
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(DISABLED):
+            stripped = stripped[len(DISABLED):]
+        elif not stripped or stripped.startswith("#"):
+            continue
+        fields = shlex.split(stripped, comments=True, posix=True)
+        if fields and fields[0] == username:
+            return True
+    return False
 
 
 def reference_file_safe(path):
@@ -295,8 +314,8 @@ def update_account(args, password_override=None):
         kernel = kernel_sessions()
         other = optional_reserved()
         if args.action == "add":
-            if args.username in active or args.username in disabled:
-                raise Invalid("PPP username already exists (including disabled account)")
+            if existing_ppp_identity(old, args.username):
+                raise Invalid("PPP username already exists in a CHAP entry (including disabled or server-specific accounts)")
             if password_override is not None:
                 password = password_override
             elif args.password_stdin:
