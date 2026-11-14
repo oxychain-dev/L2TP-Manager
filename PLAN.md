@@ -764,3 +764,11 @@ these accounts. L2TP alone has no traffic confidentiality.
 - [ ] Only after live proof consider marking multi-WAN stable.
 
 [Implementation/compatibility/rollback](docs/PLAIN-L2TP-MULTIWAN.md).
+
+
+## Latest operator evidence and tracked open work — 2026-11-14
+
+- A real iPhone L2TP/IPsec trial now **did establish IKEv1 and ESP CHILD_SA** with increasing inbound/outbound ESP counters and kernel SAD count 2. Simultaneous PPP interfaces ppp0, ppp1 and ppp2 were observed; ppp2 peer IPv4 matches the prior allocation to `myiphone`, but authenticated PPP username linkage still needs scoped pppd evidence.
+- **NOT TESTED:** iPhone public IPv4 HTTPS egress, supported IPv6, reconnection/roaming, persistence after a reboot following the successful client session, global PSK file consistency, CA1+CA2 dual-WAN public egress and comprehensive regression.
+- [GUIDE.md](GUIDE.md) is the full Persian operator guide; [ISSUE-BACKLOG.md](ISSUE-BACKLOG.md) contains 29 independent P0/P1/P2 tasks with evidence and acceptance criteria.
+- **GitHub Issues are currently disabled (HTTP 410)**. The backlog is not a substitute for real GitHub Issues; the repository owner must enable Issues and then register each draft. Do not mark issue creation completed in status reports.
