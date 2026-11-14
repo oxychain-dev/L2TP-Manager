@@ -83,12 +83,22 @@ def parse_records(content):
                 raise Invalid("Duplicate managed username at line " + str(i+1))
             if len(fields) != 4:
                 raise Invalid("Managed account must have exactly one static IP: " + name)
-            try:
-                address = ipaddress.IPv4Address(fields[3])
-            except ValueError as exc:
-                raise Invalid("Managed account has non-static IPv4: " + name) from exc
-            dest[name] = (str(address), i)
+            if fields[3] == "*":
+                # Preserve old dynamic accounts as unknown; never issue a new
+                # static lease until wildcard authorization is audited.
+                dest[name] = ("*", i)
+            else:
+                try:
+                    address = ipaddress.IPv4Address(fields[3])
+                except ValueError as exc:
+                    raise Invalid("Managed account has invalid IPv4: " + name) from exc
+                dest[name] = (str(address), i)
     return active, disabled, claimed, unknown
+
+
+def reference_file_safe(path):
+    st = path.lstat()
+    return stat.S_ISREG(st.st_mode) and st.st_uid == 0 and not (st.st_mode & 0o022)
 
 
 def optional_reserved(path=RESERVED, forwards=FORWARDS, routes=ROUTES):
@@ -107,8 +117,7 @@ def optional_reserved(path=RESERVED, forwards=FORWARDS, routes=ROUTES):
         if not f.exists():
             continue
         # Ancillary config must not be writable by other users.
-        st = f.lstat()
-        if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o022:
+        if not reference_file_safe(f):
             raise Invalid("Unsafe reference file: " + str(f))
         for line in f.read_text("utf-8").splitlines():
             if line.lstrip().startswith("#") or not line.strip():
@@ -276,6 +285,8 @@ def update_account(args, password_override=None):
         if args.username not in active and args.username not in disabled:
             raise Invalid("Managed account was not found")
         ip, line_no = (active.get(args.username) or disabled.get(args.username))
+        if ip == "*":
+            raise Invalid("Legacy dynamic-IPv4 account requires a scoped migration before editing")
         live = any(entry["remote"] == ip for entry in kernel)
         if live:
             raise Invalid("PPP address is live; disconnect only this account before changing it")
