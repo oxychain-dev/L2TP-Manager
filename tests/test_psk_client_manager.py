@@ -71,6 +71,13 @@ class SharedPskTests(unittest.TestCase):
                 with self.assertRaises(psk.Invalid):
                     psk.load_flags(path)
 
+    def test_psk_confirmation_is_handled_by_yes_no_path(self):
+        import inspect
+        definition = inspect.getsource(psk.rotate)
+        self.assertIn('("y", "yes")', definition)
+        self.assertIn('NEW PSK only at the next prompt', definition)
+        self.assertNotIn('Type CHANGE GLOBAL PSK to continue', definition)
+
     def test_reveal_requires_interactive_terminal(self):
         with mock.patch.object(psk.sys.stdin, "isatty", return_value=False):
             with self.assertRaises(psk.Invalid):
