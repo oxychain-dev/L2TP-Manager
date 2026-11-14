@@ -34,12 +34,13 @@ def record(event, interface, username, remote):
         st = STATE.lstat()
         if not stat.S_ISDIR(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o077:
             raise PermissionError("Insecure PPP runtime directory")
+        ifindex = int((Path("/sys/class/net") / interface / "ifindex").read_text("ascii").strip())
         fd, name = tempfile.mkstemp(prefix=".ppp-", dir=str(STATE))
         try:
             with os.fdopen(fd, "w", encoding="ascii") as f:
                 os.fchmod(f.fileno(), 0o600)
                 json.dump({"username": username, "remote": remote,
-                           "since": time.time()}, f)
+                           "ifindex": ifindex, "since": time.time()}, f)
             os.replace(name, STATE / (interface + ".json"))
         finally:
             if os.path.exists(name):
