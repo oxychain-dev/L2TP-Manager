@@ -117,7 +117,14 @@ while true; do
             press_enter
             ;;
         5)
-            delete_user
+            echo "WARNING: Existing delete-user code may restart xl2tpd,"
+            echo "disconnecting every active PPP client and changing forwards."
+            read -r -p "Type DELETE USERS to proceed: " answer
+            if [[ "$answer" == "DELETE USERS" ]]; then
+                delete_user
+            else
+                info "Deletion cancelled"
+            fi
             press_enter
             ;;
         6)
