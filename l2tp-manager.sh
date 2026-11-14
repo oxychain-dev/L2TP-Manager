@@ -74,7 +74,7 @@ fi
 # Main loop
 while true; do
     show_menu
-    echo -e "${YELLOW}✨ Enter your choice (0-15): ${NC}"
+    echo -e "${YELLOW}✨ Enter your choice (0-16): ${NC}"
     echo -ne "${GREEN}▶ ${NC}"
     read choice
 
@@ -187,6 +187,10 @@ while true; do
             ;;
         15)
             psk_global_settings
+            press_enter
+            ;;
+        16)
+            plain_multiwan_menu
             press_enter
             ;;
         0)
