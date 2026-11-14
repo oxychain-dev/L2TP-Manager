@@ -31,7 +31,7 @@ CANDIDATE = Path("/etc/l2tp-manager/mobile-l2tp-ipsec.candidate.conf")
 LOCK = Path("/etc/l2tp-manager/.psk-client-flags.lock")
 USERNAME = re.compile(r"[A-Za-z0-9_-]{3,32}\Z")
 PSK_LINE = re.compile(r': PSK "([^"\r\n]+)"\n\Z')
-SWAN_SECRET = re.compile(r'(?m)^([ \t]*secret[ \t]*=[ \t]*")([^"\r\n]+)("[ \t]*)
+SWAN_SECRET = re.compile(r'(?m)^([ \t]*secret[ \t]*=[ \t]*")([^"\r\n]+)("[ \t]*)$')
 
 
 class Invalid(Exception):
