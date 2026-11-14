@@ -216,10 +216,9 @@ validate_username() {
 
 validate_password() {
     local password="$1"
-    if [[ ${#password} -ge 6 && ${#password} -le 64 ]]; then
-        return 0
-    fi
-    return 1
+    # New credentials must be unambiguous in /etc/ppp/chap-secrets.
+    # Existing credentials remain untouched.
+    [[ "$password" =~ ^[A-Za-z0-9@._+=!%:-]{12,64}$ ]]
 }
 
 validate_forward_name() {
@@ -251,29 +250,22 @@ generate_random_username() {
 
 # Generate random password
 generate_random_password() {
-    local length=${1:-12}
-    local chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*"
-    local password=""
-
-    # Ensure at least one character from each category
-    local uppers="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    local lowers="abcdefghijklmnopqrstuvwxyz"
-    local numbers="0123456789"
-    local symbols="@#$%^&*"
-
-    # Add one from each category
-    password+=${uppers:$((RANDOM % ${#uppers})):1}
-    password+=${lowers:$((RANDOM % ${#lowers})):1}
-    password+=${numbers:$((RANDOM % ${#numbers})):1}
-    password+=${symbols:$((RANDOM % ${#symbols})):1}
-
-    # Fill the rest randomly
-    for ((i=4; i<length; i++)); do
-        password+=${chars:$((RANDOM % ${#chars})):1}
-    done
-
-    # Shuffle the password
-    echo "$password" | fold -w1 | shuf | tr -d '\n'
+    local length="$1"
+    [[ -n "$length" ]] || length=20
+    [[ "$length" =~ ^[0-9]{1,2}$ ]] && ((length >= 12 && length <= 64)) || return 1
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 - "$length" <<'PY'
+import secrets
+import string
+import sys
+length = int(sys.argv[1])
+classes = (string.ascii_uppercase, string.ascii_lowercase, string.digits, "@!%+=_-")
+alphabet = "".join(classes)
+chars = [secrets.choice(group) for group in classes]
+chars.extend(secrets.choice(alphabet) for _ in range(length-len(chars)))
+secrets.SystemRandom().shuffle(chars)
+print("".join(chars))
+PY
 }
 
 # =============================================
