@@ -353,6 +353,8 @@ add_user_to_system() {
         return 1
     fi
     PSK_NEW_USERNAME="$username"
+    psk_client_tool set --username "$username" --offered no ||
+        warning "New account exists; PSK distribution metadata could not be reset."
     log "PPP user created without restarting active xl2tpd sessions."
     info "New credentials apply to a new PPP authentication; test the client."
     return 0
@@ -589,7 +591,11 @@ delete_user() {
             info "Successfully deleted $total_forwards_deleted related port forward(s)"
         fi
         
-        # Restart services
+        # Clear obsolete PSK sharing metadata. Not a network-level revocation.
+        psk_client_tool prune || warning "Stale PSK distribution metadata was not cleaned."
+
+        # Historical deletion restarts all L2TP sessions; operator confirmation
+        # is required at the entrypoint before this high-impact action.
         echo -e "\n${YELLOW}Restarting services...${NC}"
         systemctl restart xl2tpd
         
