@@ -436,23 +436,14 @@ validate_vpn_network_settings() {
     fi
 }
 
-# Allocate from the configured pool; no assumptions about a specific /24.
+# Read-only preview. The account writer recalculates under its flock;
+# never treat a preview as a reservation.
 get_next_available_ip() {
     validate_vpn_network_settings || return 1
-    local start end n candidate
-    start=$(vpn_ipv4_to_int "$VPN_IP_START") || return 1
-    end=$(vpn_ipv4_to_int "$VPN_IP_END") || return 1
-    for ((n=start; n<=end; n++)); do
-        candidate=$(vpn_int_to_ipv4 "$n")
-        if ! awk -v target="$candidate" '
-            $1 !~ /^#/ && $4 == target { found=1; exit }
-            END { exit found ? 0 : 1 }
-        ' "$CHAP_SECRETS"; then
-            printf '%s\n' "$candidate"
-            return 0
-        fi
-    done
-    return 1
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 "$SCRIPT_DIR/tools/plain-l2tp-multiwan.py" next-ip \
+        --subnet "$VPN_SUBNET" --pool-start "$VPN_IP_START" \
+        --pool-end "$VPN_IP_END" --local-ip "$VPN_LOCAL_IP"
 }
 
 # =============================================
