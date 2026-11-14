@@ -299,3 +299,26 @@ Before claiming IPsec client success, observe a true authenticated
 IKEv1/ESP transport session, the selected PPP peer, and traffic egress
 from the real device. A configured IPsec responder and an open UDP port
 alone do not verify an encrypted client session.
+
+
+### Phase 1 — Shared global PSK in existing user menu
+
+The IKEv1 L2TP/IPsec setup uses **one common server PSK**,
+not a different IKE secret per PPP user. New source changes track
+whether the common PSK is **offered** with an account's details.
+This is NOT per-user IPsec enforcement or key revocation.
+
+- Menu **4**: add a PPP user, then choose PSK offering.
+- Menu **6**: update PPP password and PSK offering; IP changes are
+  blocked in Phase 1 to protect existing PBR and port forwards.
+- Menu **7**: list users/PSK metadata, and optionally reveal one
+  user's copy-ready credentials on a private terminal.
+- Menu **15**: global PSK status, terminal-only reveal, guarded
+  rotation, reload and confirmed service restart.
+
+Default listing hides passwords and the global key. New passwords
+are CSPRNG generated with a PPP-safe alphabet. Add/edit does not
+restart the L2TP daemon automatically.
+
+See [Phase-1 PSK workflow](docs/PHASE1-PSK-USERS.md).
+Source CI does NOT establish live iPhone connection or stability.
