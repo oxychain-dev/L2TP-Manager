@@ -322,3 +322,30 @@ restart the L2TP daemon automatically.
 
 See [Phase-1 PSK workflow](docs/PHASE1-PSK-USERS.md).
 Source CI does NOT establish live iPhone connection or stability.
+
+
+### Plain unencrypted L2TPv2 multi-WAN (CA1/CA2/CA3) — pre-production
+
+The original `xl2tpd` + PPP **CHAP** L2TP over UDP 1701 remains
+available **without IPsec/PSK, MPPE or any other payload encryption**.
+Plain L2TP offers **no traffic confidentiality**; CHAP authentication
+does not encrypt user traffic.
+
+New source menu **16** manages independent plain PPP identities for
+different MikroTik WAN underlays. It includes static address allocation
+serialized under a lock, active PPP peer checks, identity-aware
+session inspection with optional pppd hooks, graceful account
+disable/remove for disconnected clients, and no automatic L2TP or
+port-forward restart during new account creation.
+
+- Preserve existing CA1 account, direct6/GRE routes, NAT and forwards.
+- CA2/CA3 use distinct usernames and unique static PPP peer addresses.
+- RouterOS clients must be routed through their respective WANs; a
+  separate L2TP object alone does not select a different WAN.
+- No default public MikroTik management-port forwards.
+- Do not assert two simultaneous tunnels or identical public egress
+  until actual RouterOS and VPS integration testing is completed.
+
+[Plain-L2TP concurrent multi-WAN guide, RouterOS VRF, 16-test matrix
+and rollback](docs/PLAIN-L2TP-MULTIWAN.md). This work has **NOT** been
+deployed on Polaris and does not change the optional iPhone PSK mode.

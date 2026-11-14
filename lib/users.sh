@@ -62,7 +62,7 @@ add_user_manual() {
     # Port forwarding setup
     echo -e "\n${CYAN}🔄 Port Forwarding Setup:${NC}"
     echo -e "${YELLOW}Choose port forwarding option:${NC}"
-    echo -e "   ${GREEN}[1]${NC} 🎯 Standard MikroTik (Winbox + API)"
+    echo -e "   ${GREEN}[1]${NC} 🎯 Standard MikroTik (Winbox + API; exposes remote administration)"
     echo -e "   ${GREEN}[2]${NC} 🛠️  Custom ports"
     echo -e "   ${GREEN}[3]${NC} ⏭️  Skip port forwarding"
     echo
@@ -132,6 +132,7 @@ add_user_manual() {
     
     # Add user to system
     add_user_to_system "$username" "$password" "$ip_addr" || return 1
+    ip_addr="$ADDED_USER_IP"
     
     # Handle port forwarding after user creation
     local winbox_port="" api_port="" custom_forward_info=""
@@ -239,8 +240,8 @@ add_user_random() {
     if ip_addr=$(get_next_available_ip); then
         info "Auto-assigned next available static IP: $ip_addr"
     else
-        error "No available static IPs in range. Using auto-assign."
-        ip_addr="*"
+        error "No available safe static PPP address; refusing wildcard allocation."
+        return 1
     fi
     
     # Ask about port forwarding (only if we have static IP)
@@ -250,12 +251,12 @@ add_user_random() {
         echo -e "   • Winbox (8291) - Random external port (1000-9999)"
         echo -e "   • API (8728) - Random external port (1000-9999)"
         echo
-        echo -e "${YELLOW}Create port forwards? (Y/n): ${NC}"
+        echo -e "${YELLOW}Create public management forwards? (y/N, not recommended): ${NC}"
         echo -ne "${GREEN}▶ ${NC}"
         read create_forwards
         
         # Default to Yes if empty or Y/y
-        if [[ -z "$create_forwards" ]] || [[ $create_forwards =~ ^[yY]$ ]]; then
+        if [[ $create_forwards =~ ^[yY]$ ]]; then
             create_forwards="yes"
         else
             create_forwards="no"
@@ -295,6 +296,8 @@ add_user_random() {
         return 1
     fi
     
+    ip_addr="$ADDED_USER_IP"
+
     # Create port forwards if requested and we have static IP
     if [[ "$create_forwards" == "yes" ]] && [[ "$ip_addr" != "*" ]]; then
         echo -e "\n${YELLOW}Attempting to create port forwards...${NC}"
@@ -335,28 +338,36 @@ add_user_random() {
 }
 
 add_user_to_system() {
-    local username="$1" password="$2" ip_addr="$3"
-
+    local username="$1" password="$2" expected_ip="$3" allocated
+    ADDED_USER_IP=""
+    validate_vpn_network_settings || return 1
     validate_username "$username" || { error "Invalid username"; return 1; }
     validate_password "$password" || { error "Invalid PPP password"; return 1; }
-    if username_exists "$username"; then
-        error "Username already exists."
-        return 1
-    fi
-    [[ -f "$CHAP_SECRETS" && ! -L "$CHAP_SECRETS" ]] || {
-        error "Unsafe or missing PPP credential file"
+    command -v python3 >/dev/null 2>&1 || {
+        error "Python3 is required for concurrent-safe PPP account allocation"
         return 1
     }
-    umask 077
-    if ! printf '%-20s *       %-20s %s\n' "$username" "$password" "$ip_addr" >> "$CHAP_SECRETS"; then
-        error "Failed to append PPP user"
+
+    # Password passes through stdin, never a process argument or shell history.
+    # The allocator serializes both IP selection and CHAP file replacement.
+    if ! allocated=$(printf '%s\n' "$password" |
+        python3 "$SCRIPT_DIR/tools/plain-l2tp-multiwan.py" add \
+        --username "$username" --password-stdin \
+        --subnet "$VPN_SUBNET" --pool-start "$VPN_IP_START" \
+        --pool-end "$VPN_IP_END" --local-ip "$VPN_LOCAL_IP"); then
+        error "PPP account allocation failed; no xl2tpd restart requested"
         return 1
+    fi
+    validate_ip "$allocated" || { error "Unexpected assigned address"; return 1; }
+    ADDED_USER_IP="$allocated"
+    if [[ "$expected_ip" != "$allocated" ]]; then
+        info "Allocation refreshed under lock: $allocated (previous preview $expected_ip)"
     fi
     PSK_NEW_USERNAME="$username"
     psk_client_tool set --username "$username" --offered no ||
-        warning "New account exists; PSK distribution metadata could not be reset."
-    log "PPP user created without restarting active xl2tpd sessions."
-    info "New credentials apply to a new PPP authentication; test the client."
+        warning "Account created; PSK distribution setting should be audited."
+    log "PPP account created without restarting active L2TP sessions"
+    info "New credentials require a new PPP authentication; test actual connection."
     return 0
 }
 

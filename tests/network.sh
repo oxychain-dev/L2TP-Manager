@@ -20,11 +20,9 @@ VPN_MTU=1280
 VPN_MRU=1280
 validate_vpn_network_settings
 
-f=$(mktemp)
-trap 'rm -f -- "$f"' EXIT
-CHAP_SECRETS=$f
-printf '%s\n' 'alpha * secret 10.44.0.10' > "$f"
-[[ "$(get_next_available_ip)" = 10.44.0.11 ]]
+# Locked next-ip now consults root-owned real CHAP + kernel PPP interfaces.
+# Its offline allocator is tested with mock records/kernel in Python unit tests.
+# Do not invoke the privileged live allocator on synthetic CI fixtures.
 
 VPN_LOCAL_IP=10.44.0.11
 if validate_vpn_network_settings >/dev/null 2>&1; then exit 1; fi

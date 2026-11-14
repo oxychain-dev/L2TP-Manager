@@ -14,11 +14,19 @@ jobs:
           bash -n tests/network.sh
           bash -n tools/install-ipv4-egress-persistence.sh
           bash -n tools/install-direct6-persistence.sh
+          bash -n tools/install-ppp-session-hooks.sh
       - name: Python syntax and ULA generator
         run: |
-          python3 -m py_compile tools/ipv6-gre.py tools/ipv4-gre-egress.py tools/ipsec-policy.py tools/direct6-reconcile.py tools/global-psk.py tools/adopt-direct6-pilot.py tools/ikev2-dualstack.py tools/mobile-profiles.py tools/l2tp-ipsec-psk.py tools/ipsec-phase1-audit.py tools/psk-client-manager.py
+          python3 -m py_compile tools/ipv6-gre.py tools/ipv4-gre-egress.py tools/ipsec-policy.py tools/direct6-reconcile.py tools/global-psk.py tools/adopt-direct6-pilot.py tools/ikev2-dualstack.py tools/mobile-profiles.py tools/l2tp-ipsec-psk.py tools/ipsec-phase1-audit.py tools/psk-client-manager.py tools/plain-l2tp-multiwan.py tools/ppp-session-hook.py
           python3 tools/ipv6-gre.py generate-ula
       - name: IPv4 egress and IPsec policy safety unit tests
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Optional ShellCheck (if available)
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck --severity=error --shell=bash lib/plain-multiwan.sh tools/install-ppp-session-hooks.sh
+          else
+            echo "ShellCheck NOT AVAILABLE on runner; recorded as NOT TESTED"
+          fi
       - name: Network config allocator regression
         run: bash tests/network.sh

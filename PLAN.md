@@ -723,3 +723,44 @@ through a dedicated PR into development without rewriting main.
 
 Full runbook: [PSK account management](docs/PHASE1-PSK-USERS.md).
 Source code and CI green are not evidence of deployed, tested VPN.
+
+
+## P0 — Plain-L2TP multi-WAN independent CA sessions
+
+**User mandate:** two or more unencrypted L2TPv2/PPP/CHAP tunnels
+from MikroTik RouterOS 7.25.1 via different WANs to the same CA VPS;
+preserve original CA1 and all established NAT/routes. Do NOT enable
+IPsec, PSK, MPPE, WireGuard, OpenVPN or other payload encryption for
+these accounts. L2TP alone has no traffic confidentiality.
+
+- [x] Inspect original `lib/users.sh`, `core.sh`, `install.sh`,
+  `services.sh`, `forwards.sh`, defaults, menu and route manager.
+- [x] Add a separate plain-L2TP menu 16 (existing PSK flows remain
+  optional and independent).
+- [x] Serialize account writes and lease selection; reserve active
+  kernel PPP peer IPs, static route/forward targets, direct6 and
+  GRE IPv4 egress address references.
+- [x] Refuse wildcard/unknown pool configuration and duplicate
+  usernames; preserve older static assignments and avoid automatic
+  service restarts in the new workflow.
+- [x] Provide an optional authenticated PPP identity hook, session
+  counter/uptime/identity inference distinction and safe account
+  disable/enable/remove commands.
+- [x] Add automated unit tests, CI syntax and ShellCheck if available.
+- [x] Document official RouterOS v7-compatible VRF underlay design
+  `connect-to=address@VRF` without live MikroTik writes.
+- [ ] Actual CA1+CA2 concurrent `xl2tpd` / RouterOS negotiation:
+  `NOT TESTED`.
+- [ ] Independent WAN1 and WAN2 peer provenance in network
+  diagnostics: `NOT TESTED`.
+- [ ] Both PPP peers simultaneously present with distinct IPs:
+  `NOT TESTED`.
+- [ ] Same Canadian public IPv4 egress from both active tunnels:
+  `NOT TESTED`.
+- [ ] End-to-end 16-case acceptance list, reboot, rollback, NAT,
+  MTU and fail-closed load distribution: `NOT TESTED`.
+- [ ] Replace existing globally disruptive legacy forwarding
+  lifecycle and deletion paths under a separate maintenance test.
+- [ ] Only after live proof consider marking multi-WAN stable.
+
+[Implementation/compatibility/rollback](docs/PLAIN-L2TP-MULTIWAN.md).
