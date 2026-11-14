@@ -297,7 +297,16 @@ def rotate():
     Do NOT change xl2tpd/PPP sessions. This touches credentials of the one
     expected IKEv1 connection; other live configurations cause refusal.
     """
-    tty_confirmation("Type CHANGE GLOBAL PSK to continue: ", "CHANGE GLOBAL PSK")
+    # One clear confirmation. The PSK itself is requested separately and hidden.
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        raise Invalid("Changing PSK requires an interactive private terminal")
+    try:
+        reply = input("Change the GLOBAL PSK for all VPN clients? Type yes to continue [no]: ")
+    except EOFError as exc:
+        raise Invalid("PSK change cancelled: no confirmation provided") from exc
+    if reply.strip().lower() not in ("y", "yes"):
+        raise Invalid("PSK change cancelled: answer yes to the confirmation prompt "
+                      "(enter the NEW PSK only at the next prompt)")
     with locked():
         old = load_psk()
         x = subprocess.run(["ip", "xfrm", "state", "count"], capture_output=True,
