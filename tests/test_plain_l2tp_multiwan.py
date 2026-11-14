@@ -129,7 +129,8 @@ class MultiWanTests(unittest.TestCase):
             routes = Path(directory) / "routes.txt"
             forwards.write_text("demo:4000:172.16.101.14:8291:test\n")
             routes.write_text("192.0.2.0/24:172.16.101.15:legacy\n")
-            with mock.patch.object(mod, "RESERVED", Path(directory) / "absent"):
+            with (mock.patch.object(mod, "RESERVED", Path(directory) / "absent"),
+                  mock.patch.object(mod, "reference_file_safe", return_value=True)):
                 result = mod.optional_reserved(forwards=forwards, routes=routes)
             self.assertIn(ipaddress.IPv4Address("172.16.101.14"), result)
             self.assertIn(ipaddress.IPv4Address("172.16.101.15"), result)
