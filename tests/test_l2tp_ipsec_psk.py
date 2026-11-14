@@ -24,10 +24,11 @@ class L2tpPskCandidate(unittest.TestCase):
         self.assertNotIn("EAP", result)
         self.assertNotIn("xl2tpd", result)
 
-    def test_existing_global_file_pattern_requires_long_generated_key(self):
+    def test_existing_global_file_pattern_accepts_short_legacy_keys(self):
         self.assertIsNotNone(tool.PSK_FORMAT.fullmatch(': PSK "' + "A" * 64 + '"\n'))
-        self.assertIsNone(tool.PSK_FORMAT.fullmatch(': PSK "oxychanin"\n'))
-        self.assertIsNone(tool.PSK_FORMAT.fullmatch(': PSK "A B"\n'))
+        self.assertIsNotNone(tool.PSK_FORMAT.fullmatch(': PSK "ShortKey123!"\n'))
+        self.assertIsNotNone(tool.PSK_FORMAT.fullmatch(': PSK "OldCustomPassword18"\n'))
+        self.assertIsNone(tool.PSK_FORMAT.fullmatch(': PSK "invalid"quote"\n'))
 
 
 if __name__ == "__main__":

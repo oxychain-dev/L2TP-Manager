@@ -17,7 +17,7 @@ import subprocess
 import sys
 
 CANONICAL_PSK = Path("/etc/l2tp-manager/global-psk.secrets")
-PSK_FORMAT = re.compile(r'^: PSK "([A-Za-z0-9_-]{64})"\n$')
+PSK_FORMAT = re.compile(r'^: PSK "([^"\r\n]+)"\n$')
 
 
 class Stop(Exception):
@@ -36,8 +36,8 @@ def load_psk(path):
     if path.is_symlink() or not path.is_file() or st.st_uid != 0 or st.st_mode & 0o077:
         raise Stop("PSK must be root-owned regular file, mode 0600")
     value = PSK_FORMAT.fullmatch(path.read_text("ascii"))
-    if not value:
-        raise Stop("PSK file is not the expected strong random global-psk.py format")
+    if not value or not 8 <= len(value.group(1)) <= 128 or not all(32 <= ord(x) <= 126 for x in value.group(1)):
+        raise Stop("Invalid quoted ASCII global PSK format")
     return value.group(1)
 
 

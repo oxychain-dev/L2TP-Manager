@@ -7,6 +7,9 @@ create individual IKE PSKs. These operations require root and never
 print secrets unless an operator explicitly reveals them on a TTY.
 """
 import argparse
+import getpass
+import hmac
+import string
 import fcntl
 import ipaddress
 import json
@@ -27,8 +30,8 @@ ACTIVE = Path("/etc/swanctl/conf.d/50-mobile-l2tp-ipsec.conf")
 CANDIDATE = Path("/etc/l2tp-manager/mobile-l2tp-ipsec.candidate.conf")
 LOCK = Path("/etc/l2tp-manager/.psk-client-flags.lock")
 USERNAME = re.compile(r"[A-Za-z0-9_-]{3,32}\Z")
-PSK_LINE = re.compile(r': PSK "([A-Za-z0-9_-]{64})"\n\Z')
-SWAN_SECRET = re.compile(r'(?m)^([ \t]*secret[ \t]*=[ \t]*")([A-Za-z0-9_-]{64})("[ \t]*)$')
+PSK_LINE = re.compile(r': PSK "([^"\r\n]+)"\n\Z')
+SWAN_SECRET = re.compile(r'(?m)^([ \t]*secret[ \t]*=[ \t]*")([^"\r\n]+)("[ \t]*)$')
 
 
 class Invalid(Exception):
@@ -91,15 +94,45 @@ def load_flags(path=CONFIG):
     return data
 
 
+def valid_psk(value, minimum=1, maximum=128, for_new=False):
+    # Read legacy printable ASCII PSKs for migration, even when not 64 chars.
+    # New values exclude whitespace, quotes and backslashes for safe quoting.
+    if not minimum <= len(value) <= maximum:
+        return False
+    if not all(32 <= ord(ch) <= 126 and ord(ch) != 34 for ch in value):
+        return False
+    if for_new and any(ch.isspace() or ord(ch) == 92 for ch in value):
+        return False
+    return True
+
 def load_psk(path=PSK):
     secure_file(path)
     try:
         match = PSK_LINE.fullmatch(path.read_text(encoding="ascii"))
     except (UnicodeError, OSError) as exc:
-        raise Invalid("Unrecognized global PSK format") from exc
-    if not match:
-        raise Invalid("Unrecognized global PSK format")
+        raise Invalid("Unrecognized global PSK text encoding") from exc
+    if not match or not valid_psk(match.group(1)):
+        raise Invalid("Invalid global PSK format: expected a quoted ASCII PSK; use Global PSK settings to repair")
     return match.group(1)
+
+
+def active_psk(path=ACTIVE):
+    secure_file(path)
+    try:
+        data = path.read_text(encoding="ascii")
+    except UnicodeError as exc:
+        raise Invalid("Active strongSwan PSK file is not ASCII") from exc
+    matches = SWAN_SECRET.findall(data)
+    if len(matches) != 1 or "ike-mobile-l2tp" not in data or "mobile-l2tp-psk" not in data:
+        raise Invalid("Unexpected L2TP strongSwan secret or connection structure")
+    key = matches[0][1]
+    if not valid_psk(key):
+        raise Invalid("Active strongSwan PSK has unsupported characters")
+    return key
+
+
+def credentials_match():
+    return hmac.compare_digest(load_psk(), active_psk())
 
 
 def atomic_write(path, data):
@@ -183,8 +216,8 @@ def set_user(username, offered):
         if username not in users:
             raise Invalid("PPP username does not exist: " + username)
         if offered:
-            load_psk()
-            secure_file(ACTIVE)
+            if not credentials_match():
+                raise Invalid("Global PSK and active strongSwan snippet differ; use Global PSK settings to synchronize first")
             flags["users"][username] = True
         else:
             flags["users"].pop(username, None)
@@ -213,6 +246,8 @@ def secret_reveal(username=None):
     if username is not None and username not in users:
         raise Invalid("PPP username does not exist")
     offered = username is None or flags["users"].get(username) is True
+    if offered and not credentials_match():
+        raise Invalid("Global PSK and active strongSwan snippet differ. Synchronize before revealing client settings.")
     key = load_psk() if offered else None
     ip = public_ip()
     tty_confirmation("Type REVEAL to display sensitive credentials locally: ", "REVEAL")
@@ -232,72 +267,145 @@ def secret_reveal(username=None):
 
 def status():
     flags = load_flags()
-    print("Global PSK:", "ready" if secure_file(PSK, required=False) else "missing")
-    if secure_file(PSK, required=False):
-        load_psk()
-    print("Installed L2TP/IPsec snippet:", "present" if secure_file(ACTIVE, required=False) else "absent")
+    if not secure_file(PSK, required=False):
+        print("Global PSK: missing")
+    else:
+        try:
+            key = load_psk()
+        except Invalid as exc:
+            print("Global PSK: invalid; " + str(exc))
+        else:
+            print("Global PSK: valid (" + str(len(key)) + " chars, value hidden)")
+    if secure_file(ACTIVE, required=False):
+        try:
+            print("Active strongSwan snippet consistency:",
+                  "MATCH" if credentials_match() else "MISMATCH — not synchronized")
+        except Invalid as exc:
+            print("Active strongSwan snippet: invalid; " + str(exc))
+    else:
+        print("Active strongSwan snippet: absent")
     existing = read_users()
     print("Existing PPP users offered PSK details:",
           sum(1 for name in flags["users"] if name in existing))
-    print("Policy: one global PSK, not user-specific and not IPsec-only enforcement.")
+    print("PSK is global; offering a profile is NOT per-user IPsec enforcement.")
 
 
 def rotate():
-    """Controlled common-key rotation, with best-effort config + VICI rollback."""
-    tty_confirmation("Type ROTATE GLOBAL PSK (disrupts all PSK clients): ", "ROTATE GLOBAL PSK")
+    """Synchronize global and owned strongSwan PSKs, with rollback on failure.
+
+    Operator chooses 8-64 ASCII non-whitespace chars (or auto-generates 16).
+    Do NOT change xl2tpd/PPP sessions. This touches credentials of the one
+    expected IKEv1 connection; other live configurations cause refusal.
+    """
+    tty_confirmation("Type CHANGE GLOBAL PSK to continue: ", "CHANGE GLOBAL PSK")
     with locked():
         old = load_psk()
-        # Do not change PSK with active encrypted sessions.
-        x = subprocess.run(["ip", "xfrm", "state", "count"], capture_output=True, text=True, check=False)
+        x = subprocess.run(["ip", "xfrm", "state", "count"], capture_output=True,
+                           text=True, check=False, timeout=15)
         match = re.search(r"\bSAD count\s+(\d+)", x.stdout)
         if x.returncode or not match or int(match.group(1)) != 0:
-            raise Invalid("Nonzero/unknown kernel IPsec SAs; rotation refused")
-        service = subprocess.run(["systemctl", "is-active", "--quiet", "strongswan.service"], check=False)
-        if service.returncode:
-            raise Invalid("strongSwan is not active; no live rotation permitted")
+            raise Invalid("Active or unknown kernel IPsec SAs: cannot replace PSK safely")
+        s = subprocess.run(["swanctl", "--stats"], capture_output=True,
+                           text=True, check=False, timeout=15)
+        if s.returncode or not re.search(r"\bIKE_SAs:\s+0\s+total\b", s.stdout):
+            raise Invalid("Active or unknown IKE sessions: cannot replace PSK safely")
+        if subprocess.run(["systemctl", "is-active", "--quiet",
+                           "strongswan.service"], check=False).returncode:
+            raise Invalid("strongSwan is not active")
+        conns = subprocess.run(["swanctl", "--list-conns"], capture_output=True,
+                               text=True, check=False, timeout=15)
+        names = re.findall(r"(?m)^(\S+):\s+IKEv[12]\b", conns.stdout)
+        if conns.returncode or names != ["mobile-l2tp-psk"]:
+            raise Invalid("Unexpected loaded IPsec connections; manual audit needed")
         snippets = sorted(ACTIVE.parent.glob("*.conf"))
         if snippets != [ACTIVE]:
-            raise Invalid("Unknown additional swanctl snippets: rotation requires a dedicated audit")
+            raise Invalid("Other strongSwan snippets exist; refused to modify shared credentials")
         paths = [PSK, ACTIVE]
         if secure_file(CANDIDATE, required=False):
             paths.append(CANDIDATE)
-        original = {}
-        for path in paths:
-            secure_file(path)
-            original[path] = path.read_text(encoding="ascii")
-        originals = original[ACTIVE]
-        if len(SWAN_SECRET.findall(originals)) != 1 or SWAN_SECRET.search(originals).group(2) != old:
-            raise Invalid("Active PSK snippet differs from validated global secret")
-        for path in paths[2:]:
-            data = original[path]
-            if len(SWAN_SECRET.findall(data)) != 1 or SWAN_SECRET.search(data).group(2) != old:
-                raise Invalid("Candidate snippet differs from validated global secret")
-        new = secrets.token_urlsafe(48)
-        if len(new) != 64 or not re.fullmatch(r"[A-Za-z0-9_-]{64}", new):
-            raise Invalid("Generated PSK failed entropy format check")
-        replacements = {PSK: ': PSK "' + new + '"\n'}
+        original = {path: path.read_text(encoding="ascii") for path in paths}
+        if not valid_psk(active_psk()):
+            raise Invalid("Invalid active PSK")
+        if len(PSK_LINE.findall(original[PSK])) != 1:
+            raise Invalid("Invalid global PSK structure")
+        for path in paths[1:]:
+            if (len(SWAN_SECRET.findall(original[path])) != 1
+                    or "ike-mobile-l2tp" not in original[path]
+                    or "mobile-l2tp-psk" not in original[path]):
+                raise Invalid("Unexpected strongSwan candidate structure in " + str(path))
+
+        if not credentials_match():
+            print("NOTICE: The global PSK differs from the active strongSwan file.")
+            print("Both will be synchronized to the new PSK. Existing values remain private.")
+
+        proposed = getpass.getpass(
+            "New PSK (8-64 printable ASCII without spaces/quotes/backslash; "
+            "Enter=random 16): "
+        )
+        if proposed:
+            confirmation = getpass.getpass("Repeat new PSK: ")
+            if proposed != confirmation:
+                raise Invalid("PSK confirmation mismatch")
+        else:
+            alphabet = string.ascii_letters + string.digits
+            proposed = "".join(secrets.choice(alphabet) for _ in range(16))
+        if not valid_psk(proposed, minimum=8, maximum=64, for_new=True):
+            raise Invalid("New PSK must be 8-64 printable ASCII characters; "
+                          "no spaces, quotes, backslashes or control characters")
+        if hmac.compare_digest(proposed, old):
+            raise Invalid("New PSK is identical to previous global PSK")
+        if len(proposed) < 16:
+            print("WARNING: Short or guessable PSKs reduce IKEv1 protection; "
+                  "a random 16-character PSK is recommended.")
+
+        replacements = {PSK: ': PSK "' + proposed + '"\n'}
         for path in paths[1:]:
             replacements[path] = SWAN_SECRET.sub(
-                lambda m: m.group(1) + new + m.group(3), original[path]
+                lambda m: m.group(1) + proposed + m.group(3), original[path]
             )
+        backup = Path(tempfile.mkdtemp(prefix="psk-rollback-", dir=str(PSK.parent)))
+        os.chmod(backup, 0o700)
+        for index, path in enumerate(paths):
+            copy = backup / (str(index) + ".bak")
+            with copy.open("x", encoding="ascii") as output:
+                os.chmod(copy, 0o600)
+                output.write(original[path])
+
         changed = []
         try:
             for path in paths:
                 atomic_write(path, replacements[path])
                 changed.append(path)
-            r = subprocess.run(["swanctl", "--load-creds", "--noprompt"],
-                               capture_output=True, text=True, check=False, timeout=25)
-            if r.returncode or "loaded IKE secret" not in r.stdout:
-                raise Invalid("strongSwan did not confirm the new IKE secret was loaded")
-        except (OSError, subprocess.TimeoutExpired, Invalid):
+            r = subprocess.run(["swanctl", "--load-creds", "--clear", "--noprompt"],
+                               capture_output=True, text=True, check=False, timeout=30)
+            if r.returncode or not re.search(r"loaded\s+IKE\s+secret",
+                                             r.stdout, re.IGNORECASE):
+                raise Invalid("swanctl did not confirm that the new IKE secret was loaded")
+        except (OSError, subprocess.TimeoutExpired, Invalid) as exc:
             for path in reversed(changed):
                 atomic_write(path, original[path])
-            subprocess.run(["swanctl", "--load-creds", "--noprompt"],
-                           capture_output=True, check=False, timeout=25)
-            raise Invalid("Rotation failed; files restored. Verify daemon credentials before reuse.")
-    print("GLOBAL PSK ROTATED; update ALL previously provisioned clients.")
-    print("NEW SHARED SECRET (local terminal only):", new)
-    print("No xl2tpd restart performed; existing sessions were required to be absent.")
+            try:
+                restore = subprocess.run(
+                    ["swanctl", "--load-creds", "--clear", "--noprompt"],
+                    capture_output=True, text=True, check=False, timeout=30
+                )
+            except (OSError, subprocess.TimeoutExpired) as err:
+                raise Invalid("ROLLBACK FAILED: restore the private backups in "
+                              + str(backup)) from err
+            if restore.returncode:
+                raise Invalid("ROLLBACK INCOMPLETE: restore the private backups in "
+                              + str(backup)) from exc
+            raise Invalid("PSK update failed. Previous files restored; backup in "
+                          + str(backup)) from exc
+
+        print("SUCCESS: Global PSK and active/candidate snippets synchronized.")
+        print("strongSwan IKE credentials reloaded; no daemon restart performed.")
+        print("Private rollback backups:", backup)
+        if not sys.stdout.isatty():
+            print("New PSK not printed because output is not an interactive terminal.")
+        else:
+            print("NEW GLOBAL PSK (private terminal only):", proposed)
+        print("All previously configured PSK clients must use the new shared key.")
 
 
 def main():

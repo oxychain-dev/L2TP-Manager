@@ -5,7 +5,6 @@ The output is a root-only strongSwan legacy secrets include, not a
 deployed IPsec endpoint. No PSK value is printed, logged or committed.
 """
 import argparse
-import hashlib
 import os
 from pathlib import Path
 import re
@@ -13,7 +12,7 @@ import secrets
 import sys
 
 DEFAULT = Path("/etc/l2tp-manager/global-psk.secrets")
-FORMAT = re.compile(r'^: PSK "([A-Za-z0-9_-]{64})"\n$')
+FORMAT = re.compile(r'^: PSK "([^"\r\n]+)"\n$')
 
 
 class Invalid(Exception):
@@ -38,19 +37,19 @@ def audit(path):
         raise Invalid("Key file must be root-owned regular mode 0600")
     data = path.read_text(encoding="ascii")
     match = FORMAT.fullmatch(data)
-    if not match:
+    if not match or not 8 <= len(match.group(1)) <= 128 or not all(32 <= ord(x) <= 126 for x in match.group(1)):
         raise Invalid("Unexpected global key file format")
-    print("Global PSK file valid:", path)
-    print("Fingerprint (not key):", hashlib.sha256(match.group(1).encode()).hexdigest()[:16])
+    print("Global PSK file valid:", path, "(length:", len(match.group(1)), ")")
+    print("PSK contents and fingerprint intentionally hidden")
     print("Not evidence of an active IPsec listener or secure user selection")
 
 
-def init(path):
+def init(path, length=16):
     verify_parent(path)
-    # 48 cryptographically random bytes = 384 bits, URL-safe 64-character secret.
-    key = secrets.token_urlsafe(48)
-    if len(key) != 64 or not re.fullmatch(r"[A-Za-z0-9_-]{64}", key):
-        raise Invalid("Unable to create required high-entropy key")
+    if not 8 <= length <= 64:
+        raise Invalid("New PSK length must be 8-64 (16 recommended)")
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    key = "".join(secrets.choice(alphabet) for _ in range(length))
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -76,11 +75,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["init", "audit"])
     parser.add_argument("--path", type=Path, default=DEFAULT)
+    parser.add_argument("--length", type=int, default=16, help="New PSK length for init (8-64; default 16)")
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise Invalid("Root required")
     if args.action == "init":
-        init(args.path)
+        init(args.path, args.length)
     else:
         audit(args.path)
 
