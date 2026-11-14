@@ -26,6 +26,8 @@ CHAP = Path("/etc/ppp/chap-secrets")
 FORWARDS = Path("/etc/l2tp-forwards.conf")
 ROUTES = Path("/etc/l2tp-routes.conf")
 RESERVED = Path("/etc/l2tp-manager/ppp-reserved-ips")
+DIRECT6 = Path("/etc/l2tp-manager/direct6.json")
+IPV4_EGRESS = Path("/etc/l2tp-manager/ipv4-egress.json")
 LOCK = Path("/run/lock/l2tp-manager-accounts.lock")
 STATE = Path("/run/l2tp-manager/ppp-sessions")
 USER = re.compile(r"[A-Za-z0-9_-]{3,32}\Z")
@@ -101,6 +103,33 @@ def reference_file_safe(path):
     return stat.S_ISREG(st.st_mode) and st.st_uid == 0 and not (st.st_mode & 0o022)
 
 
+def structured_reserved(direct6=DIRECT6, ipv4_egress=IPV4_EGRESS):
+    """Keep address allocations referenced by other project-managed paths."""
+    reserved = set()
+    for path, field, list_field in (
+        (direct6, "peer_ipv4", "clients"),
+        (ipv4_egress, "client_ipv4", None),
+    ):
+        if not path.exists():
+            continue
+        if not reference_file_safe(path):
+            raise Invalid("Unsafe project routing configuration: " + str(path))
+        try:
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(cfg, dict):
+                raise ValueError("Expected JSON object")
+            entries = cfg[list_field] if list_field else [cfg]
+            if not isinstance(entries, list):
+                raise ValueError("Invalid client reservation list")
+            for entry in entries:
+                if not isinstance(entry, dict) or field not in entry:
+                    raise ValueError("Invalid client reservation")
+                reserved.add(ipaddress.IPv4Address(entry[field]))
+        except (ValueError, TypeError, KeyError) as exc:
+            raise Invalid("Invalid managed routing reservation in " + str(path)) from exc
+    return reserved
+
+
 def optional_reserved(path=RESERVED, forwards=FORWARDS, routes=ROUTES):
     """Address claims in forwards/routes prevent premature IP reuse."""
     used = set()
@@ -129,7 +158,7 @@ def optional_reserved(path=RESERVED, forwards=FORWARDS, routes=ROUTES):
                 used.add(ipaddress.IPv4Address(parts[index].strip()))
             except ValueError:
                 pass
-    return used
+    return used | structured_reserved()
 
 
 def kernel_sessions():
